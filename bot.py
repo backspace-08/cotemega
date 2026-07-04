@@ -134,7 +134,7 @@ def handle_view_chars(call, rarity):
         if markup is None:
             bot.answer_callback_query(call.id, caption)
             return
-        if rarity == 'легендарная':
+        if rarity == 'legendary':
             with open(image_path, 'rb') as file:
                 bot.send_animation(
                     chat_id=call.message.chat.id,
@@ -256,12 +256,12 @@ def update_mmr(winner_id: int, loser_id: int, is_timeout):
     # веса редкостей (пример, можно подредактировать)
     try:
         rarity_weights = {
-            "обычная": 1,
-            "редкая": 2,
-            "эпическая": 3,
-            "мифическая": 4,
-            "легендарная": 5,
-            "специальная": 5,
+            "common": 1,
+            "rare": 2,
+            "epic": 3,
+            "mythic": 4,
+            "legendary": 5,
+            "special": 5,
         }
         winner_mmr= execute_query(f"SELECT mmr FROM users WHERE user_id = %s",(winner_id,),fetch='one')[0]
         loser_mmr= execute_query(f"SELECT mmr FROM users WHERE user_id = %s",(loser_id,),fetch='one')[0]
@@ -708,19 +708,19 @@ def handle_deck_btn_chars(call):
     number = int(number_str)
     try:
         safe_delete_message(bot, call.message.chat.id, call.message.message_id)
-        user_basic = len(get_user_characters(user_id, rarity='обычная'))
-        user_rare = len(get_user_characters(user_id, rarity='редкая'))
-        user_epic = len(get_user_characters(user_id, rarity='эпическая'))
-        user_mythic = len(get_user_characters(user_id, rarity='мифическая'))
-        user_legendary = len(get_user_characters(user_id, rarity='легендарная'))
-        user_special = len(get_user_characters(user_id, rarity='специальная'))
+        user_basic = len(get_user_characters(user_id, rarity='common'))
+        user_rare = len(get_user_characters(user_id, rarity='rare'))
+        user_epic = len(get_user_characters(user_id, rarity='epic'))
+        user_mythic = len(get_user_characters(user_id, rarity='mythic'))
+        user_legendary = len(get_user_characters(user_id, rarity='legendary'))
+        user_special = len(get_user_characters(user_id, rarity='special'))
         counts = get_rarity_counts()
         markup = types.InlineKeyboardMarkup(row_width=1)
-        buttons=[types.InlineKeyboardButton(f"🩶 Обычные {user_basic}/{counts.get('обычная', 0)}", callback_data=f"pick_chars_basic_{number}"),
-                types.InlineKeyboardButton(f"💙 Редкие {user_rare}/{counts.get('редкая', 0)}", callback_data=f"pick_chars_rare_{number}"),
-                types.InlineKeyboardButton(f"💜 Эпические {user_epic}/{counts.get('эпическая', 0)}", callback_data=f"pick_chars_epic_{number}"),
-                types.InlineKeyboardButton(f"❤️ Мифические {user_mythic}/{counts.get('мифическая', 0)}", callback_data=f"pick_chars_mythic_{number}"),
-                types.InlineKeyboardButton(f"💛 Легендарные {user_legendary}/{counts.get('легендарная', 0)}", callback_data=f"pick_chars_legendary_{number}"),
+        buttons=[types.InlineKeyboardButton(f"🩶 Обычные {user_basic}/{counts.get('common', 0)}", callback_data=f"pick_chars_basic_{number}"),
+                types.InlineKeyboardButton(f"💙 Редкие {user_rare}/{counts.get('rare', 0)}", callback_data=f"pick_chars_rare_{number}"),
+                types.InlineKeyboardButton(f"💜 Эпические {user_epic}/{counts.get('epic', 0)}", callback_data=f"pick_chars_epic_{number}"),
+                types.InlineKeyboardButton(f"❤️ Мифические {user_mythic}/{counts.get('mythic', 0)}", callback_data=f"pick_chars_mythic_{number}"),
+                types.InlineKeyboardButton(f"💛 Легендарные {user_legendary}/{counts.get('legendary', 0)}", callback_data=f"pick_chars_legendary_{number}"),
                 types.InlineKeyboardButton(f"🤍 Специальные {user_special}", callback_data=f"pick_chars_special_{number}"),
                 types.InlineKeyboardButton(f"⬅️ Назад", callback_data=f"deck")]
         markup.add(*buttons)
@@ -743,13 +743,13 @@ def handle_pick_chars(call):
         pick, chars, action, number_str = call.data.split('_')
         number = int(number_str)
         rarity = {
-            'basic': 'обычная',
-            'rare': 'редкая',
-            'epic': 'эпическая',
-            'mythic': 'мифическая',
-            'legendary': 'легендарная',
-            'special': 'специальная',
-        }.get(action, 'обычная')
+            'basic': 'common',
+            'rare': 'rare',
+            'epic': 'epic',
+            'mythic': 'mythic',
+            'legendary': 'legendary',
+            'special': 'special',
+        }.get(action, 'common')
         handle_view_chars_pick(call, rarity, number)
     finally:
         user_locks[user_id].release()
@@ -764,7 +764,7 @@ def handle_view_chars_pick(call, rarity, number):
         if markup is None:
             bot.answer_callback_query(call.id, caption)
             return
-        if rarity == 'легендарная':
+        if rarity == 'legendary':
             with open(image_path, 'rb') as file:
                 msg = bot.send_animation(
                     chat_id=call.message.chat.id,
@@ -865,7 +865,7 @@ def handle_pick_charpage(call):
         _, rarity, page_str, number = parts
         page = int(page_str)
         markup, caption, image_path = generate_character_keyboard_pick(user_id, rarity, int(number), page)
-        if rarity == 'легендарная':
+        if rarity == 'legendary':
             with open(image_path, 'rb') as file:
                 bot.edit_message_media(
                     chat_id=call.message.chat.id,
@@ -1443,7 +1443,7 @@ def char_killed(user_id):
             (next_char_id,),
             fetch='one'
         )
-        if rarity == 'легендарная':
+        if rarity == 'legendary':
             with open(char_path, 'rb') as file_data:
                 bot.send_animation(
                     chat_id=user_id, 
@@ -1525,7 +1525,7 @@ def handle_switch_deck(call):
                 return False
         opponent=get_opponent_id(user_id)
         char_path,transl,rarity=execute_query("""SELECT image_path,translation,rarity FROM characters WHERE char_id=%s """,(char_id,),fetch='one')
-        if rarity == 'легендарная':
+        if rarity == 'legendary':
             with open(char_path,'rb') as file_data:
                 bot.send_animation(chat_id=call.message.chat.id,animation=file_data,caption=f'Вы выбрали:\n{transl}',parse_mode="Markdown")
             with open(char_path,'rb') as file_data:
@@ -1834,7 +1834,7 @@ def calc_round(user_id, opponent_id):
         text_of_my_bonus_for_opp = opp_bonus_calc(user_id)
         health = int(execute_query(f"SELECT {deck2}hp FROM arena_queue WHERE user_id = %s",(opponent_id,), fetch='one')[0])
         def send_media_messages(caption_user, caption_opponent):
-            if rarity1 == 'легендарная':
+            if rarity1 == 'legendary':
                 with open(char1_path, 'rb') as file_data:
                     bot.send_animation(user_id, file_data, caption=caption_user, parse_mode="HTML")
                 with open(char1_path, 'rb') as file_data:
@@ -2132,11 +2132,12 @@ def delete_arena_queue(user1_id,user2_id):
 
 def get_rarity_emoji(rarity):
     rarity_emojis = {
-        'обычная': '🩶',
-        'редкая': '💙',
-        'эпическая': '💜',
-        'мифическая': '❤️',
-        'легендарная': '💛'
+        'common': '🩶',
+        'rare': '💙',
+        'epic': '💜',
+        'mythic': '❤️',
+        'legendary': '💛',
+        'special': '🤍',
     }
     return rarity_emojis.get(rarity.lower(), '')
 
@@ -2146,10 +2147,10 @@ def format_chars(chars):
     for char in chars:
         # Получаем редкость персонажа
         rarity_row = execute_query(
-            "SELECT rarity FROM characters WHERE translation = %s AND rarity != 'специальная'",
+            "SELECT rarity FROM characters WHERE translation = %s AND rarity != 'special'",
             (char,),
             fetch='one')
-        rarity = rarity_row[0] if rarity_row else 'обычная'
+        rarity = rarity_row[0] if rarity_row else 'common'
         emoji = get_rarity_emoji(rarity)
         formatted.append(f"{emoji} {char}")
     return "\n".join(formatted) if formatted else "Нет персонажей"
@@ -2515,7 +2516,7 @@ def give_first_character(message):
                 f'<blockquote>├‣❤️ - {health}\n├‣💪 - {attack}</blockquote>\n'
                 f'💠 +{RARITY_POINTS[rarity]} pts'
             )
-            if rarity == 'легендарная':
+            if rarity == 'legendary':
                 with char_path.open('rb') as f:
                     bot.send_animation(chat_id, f, caption=caption, parse_mode="HTML")
             else:
@@ -2584,11 +2585,7 @@ clean_locks_every_hour()
 
 def get_random_character(user_id: int, is_super_spin: bool = False) -> tuple:
     probs = SUPER_SPIN_PROBS if is_super_spin else NORMAL_SPIN_PROBS
-    rarity_ru = weighted_random_choice(probs)
-    rarity_en = {
-        'обычная': 'common', 'редкая': 'rare', 'эпическая': 'epic',
-        'мифическая': 'mythic', 'легендарная': 'legendary', 'специальная': 'special',
-    }.get(rarity_ru, rarity_ru)
+    rarity = weighted_random_choice(probs)
     query = """
     SELECT image_path, translation, rarity, type, health, attack
     FROM characters
@@ -2596,7 +2593,7 @@ def get_random_character(user_id: int, is_super_spin: bool = False) -> tuple:
     ORDER BY RANDOM()
     LIMIT 1
     """
-    result = execute_query(query, (rarity_en,), fetch='one')
+    result = execute_query(query, (rarity,), fetch='one')
     if not result:
         return None
     file_name, translation, rarity, ctype, health, attack = result
@@ -2666,8 +2663,8 @@ def _handle_char_spin(call, super_spin):
                            f'💠 +{RARITY_POINTS[rarity]} pts')
             else:
                 shard_map = {
-                    'обычная': 1, 'редкая': 3, 'эпическая': 10,
-                    'мифическая': 20, 'легендарная': 100
+                    'common': 1, 'rare': 3, 'epic': 10,
+                    'mythic': 20, 'legendary': 100
                 }
                 shards = shard_map.get(rarity, 0)
                 plus_shards(user_id, shards)
@@ -2675,7 +2672,7 @@ def _handle_char_spin(call, super_spin):
                            f'Редкость - {rarity}\n<blockquote>├‣❤️ - {health}\n├‣💪 - {attack}</blockquote>\n'
                            f'💠 +{RARITY_POINTS[rarity]} pts\n🔮 +{shards} {decline_fragments(shards)}')
 
-            if rarity == 'легендарная':
+            if rarity == 'legendary':
                 with char_path.open('rb') as file:
                     bot.send_animation(chat_id=call.message.chat.id, animation=file, caption=caption, parse_mode="HTML")
             else:
@@ -2772,15 +2769,14 @@ def generate_character_keyboard(user_id, rarity, page=0):
 def handle_view_chars_by_rarity(call):
     view, chars, action = call.data.split('_')
     rarity = {
-        'basic': 'обычная',
-        'rare': 'редкая',
-        'epic': 'эпическая',
-        'mythic': 'мифическая',
-        'legendary': 'легендарная',
-        'special': 'специальная',
-    }.get(action, 'обычная')
+        'basic': 'common',
+        'rare': 'rare',
+        'epic': 'epic',
+        'mythic': 'mythic',
+        'legendary': 'legendary',
+        'special': 'special',
+    }.get(action, 'common')
     handle_view_chars(call, rarity)
-
 
 
 def get_rarity_counts() -> dict:
@@ -2802,22 +2798,22 @@ def handle_view_chars_rarities(call):
     сhat_id = call.message.chat.id
     user_id = str(call.from_user.id)
     safe_delete_message(bot, call.message.chat.id, call.message.message_id)
-    user_basic = len(get_user_characters(user_id, rarity='обычная'))
-    user_rare = len(get_user_characters(user_id, rarity='редкая'))
-    user_epic = len(get_user_characters(user_id, rarity='эпическая'))
-    user_mythic = len(get_user_characters(user_id, rarity='мифическая'))
-    user_legendary = len(get_user_characters(user_id, rarity='легендарная'))
-    user_special = len(get_user_characters(user_id, rarity='специальная'))
+    user_basic = len(get_user_characters(user_id, rarity='common'))
+    user_rare = len(get_user_characters(user_id, rarity='rare'))
+    user_epic = len(get_user_characters(user_id, rarity='epic'))
+    user_mythic = len(get_user_characters(user_id, rarity='mythic'))
+    user_legendary = len(get_user_characters(user_id, rarity='legendary'))
+    user_special = len(get_user_characters(user_id, rarity='special'))
     counts = get_rarity_counts()
     markup=types.InlineKeyboardMarkup(row_width=1)
-    buttons=[types.InlineKeyboardButton(f"🩶 Обычные {user_basic}/{counts.get('обычная', 0)}", callback_data="view_chars_basic"),
-            types.InlineKeyboardButton(f"💙 Редкие {user_rare}/{counts.get('редкая', 0)}", callback_data="view_chars_rare"),
-            types.InlineKeyboardButton(f"💜 Эпические {user_epic}/{counts.get('эпическая', 0)}", callback_data="view_chars_epic"),
-            types.InlineKeyboardButton(f"❤️ Мифические {user_mythic}/{counts.get('мифическая', 0)}", callback_data="view_chars_mythic"),
-            types.InlineKeyboardButton(f"💛 Легендарные {user_legendary}/{counts.get('легендарная', 0)}", callback_data="view_chars_legendary"),
+    buttons=[types.InlineKeyboardButton(f"🩶 Обычные {user_basic}/{counts.get('common', 0)}", callback_data="view_chars_basic"),
+            types.InlineKeyboardButton(f"💙 Редкие {user_rare}/{counts.get('rare', 0)}", callback_data="view_chars_rare"),
+            types.InlineKeyboardButton(f"💜 Эпические {user_epic}/{counts.get('epic', 0)}", callback_data="view_chars_epic"),
+            types.InlineKeyboardButton(f"❤️ Мифические {user_mythic}/{counts.get('mythic', 0)}", callback_data="view_chars_mythic"),
+            types.InlineKeyboardButton(f"💛 Легендарные {user_legendary}/{counts.get('legendary', 0)}", callback_data="view_chars_legendary"),
             types.InlineKeyboardButton(f"🤍 Специальные {user_special}", callback_data="view_chars_special"),
             types.InlineKeyboardButton('↩️ В меню',callback_data='main_menu')]
-    specials=get_user_characters(user_id,rarity='специальная')
+    specials=get_user_characters(user_id,rarity='special')
     if not specials:
         buttons_to_show = buttons[:-2] + [buttons[-1]]
         for btn in buttons_to_show:
@@ -2843,7 +2839,7 @@ def handle_view_charpage(call):
         _, rarity, page_str = parts
         page = int(page_str)
         markup, caption, image_path = generate_character_keyboard(call.from_user.id, rarity, page)
-        if rarity == 'легендарная':
+        if rarity == 'legendary':
             with open(image_path, 'rb') as file:
                 bot.edit_message_media(
                     chat_id=call.message.chat.id,

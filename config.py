@@ -45,25 +45,26 @@ PRICES = """
 """
 
 NORMAL_SPIN_PROBS = {
-    'обычная': 50,
-    'редкая': 36.25,
-    'эпическая': 8.5,
-    'мифическая': 4,
-    'легендарная': 1.25,
+    'common': 50,
+    'rare': 36.25,
+    'epic': 8.5,
+    'mythic': 4,
+    'legendary': 1.25,
 }
 
 SUPER_SPIN_PROBS = {
-    'эпическая': 50,
-    'мифическая': 37.5,
-    'легендарная': 12.5,
+    'epic': 50,
+    'mythic': 37.5,
+    'legendary': 12.5,
 }
 
 RARITY_POINTS = {
-    'обычная': 100,
-    'редкая': 200,
-    'эпическая': 500,
-    'мифическая': 1500,
-    'легендарная': 3000,
+    'common': 100,
+    'rare': 200,
+    'epic': 500,
+    'mythic': 1500,
+    'legendary': 3000,
+    'special': 0,
 }
 
 os.makedirs(CHARS_IMAGES_DIR, exist_ok=True)
