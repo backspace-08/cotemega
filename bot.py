@@ -41,24 +41,24 @@ def add_user_message(user_id, message_id):
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-# Отключаем наследование от root logger
 logger.propagate = False
 
-# Убираем старые обработчики, если они есть
 if logger.hasHandlers():
     logger.handlers.clear()
 
-# Добавляем только файл
 file_handler = RotatingFileHandler(
     "bot_errors.log",
     maxBytes=5 * 1024 * 1024,
     backupCount=3,
     encoding="utf-8"
 )
+stream_handler = logging.StreamHandler()
 formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 file_handler.setFormatter(formatter)
+stream_handler.setFormatter(formatter)
 
 logger.addHandler(file_handler)
+logger.addHandler(stream_handler)
 
 
 
@@ -2584,7 +2584,11 @@ clean_locks_every_hour()
 
 def get_random_character(user_id: int, is_super_spin: bool = False) -> tuple:
     probs = SUPER_SPIN_PROBS if is_super_spin else NORMAL_SPIN_PROBS
-    rarity = weighted_random_choice(probs)
+    rarity_ru = weighted_random_choice(probs)
+    rarity_en = {
+        'обычная': 'common', 'редкая': 'rare', 'эпическая': 'epic',
+        'мифическая': 'mythic', 'легендарная': 'legendary', 'специальная': 'special',
+    }.get(rarity_ru, rarity_ru)
     query = """
     SELECT image_path, translation, rarity, type, health, attack
     FROM characters
@@ -2592,7 +2596,7 @@ def get_random_character(user_id: int, is_super_spin: bool = False) -> tuple:
     ORDER BY RANDOM()
     LIMIT 1
     """
-    result = execute_query(query, (rarity,), fetch='one')
+    result = execute_query(query, (rarity_en,), fetch='one')
     if not result:
         return None
     file_name, translation, rarity, ctype, health, attack = result
