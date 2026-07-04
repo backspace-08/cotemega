@@ -152,14 +152,13 @@ def get_user_characters(user_id, rarity=None):
     return {row[0]: {'image': row[1], 'transl': row[2], 'rarity': row[3]} for row in results} if results else {}
 
 
-def save_user_character(user_id, char_path,verse):
-    char_name = char_path.stem
+def save_user_character(user_id, char_path, verse):
     char_id = execute_query(
-        "SELECT char_id FROM characters WHERE char_name = %s",
-        (char_name,),
+        "SELECT char_id FROM characters WHERE image_path LIKE %s",
+        (f"%/{char_path.name}" if char_path.name else char_path.name,),
         fetch=True
     )
-    
+
     if char_id:
         execute_query(
             """INSERT INTO inventory (user_id, char_id)
