@@ -67,4 +67,13 @@ RARITY_POINTS = {
     'special': 0,
 }
 
+RARITY_DISPLAY = {
+    'common': 'обычная',
+    'rare': 'редкая',
+    'epic': 'эпическая',
+    'mythic': 'мифическая',
+    'legendary': 'легендарная',
+    'special': 'специальная',
+}
+
 os.makedirs(CHARS_IMAGES_DIR, exist_ok=True)

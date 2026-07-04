@@ -4,7 +4,7 @@ from telebot import types
 from datetime import datetime, timedelta
 from functools import partial
 from config import BOT_TOKEN, RARITY_POINTS, PRICES, CHARS_IMAGES_DIR, SUPER_SPIN_PROBS, NORMAL_SPIN_PROBS
-from config import ADMIN_ID, PRICES, WEBHOOK_URL, WEBHOOK_LISTEN, WEBHOOK_PORT
+from config import ADMIN_ID, PRICES, WEBHOOK_URL, WEBHOOK_LISTEN, WEBHOOK_PORT, RARITY_DISPLAY
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
@@ -590,6 +590,10 @@ def get_full_deck(user_id):
         print(f'Ошибка в модуле get_full_deck{e}')
 
 
+def loc_rarity(r):
+    return RARITY_DISPLAY.get(r, r)
+
+
 def get_type_char(type):
     types_emojis = {
         1: '🎭',
@@ -825,7 +829,7 @@ def generate_character_keyboard_pick(user_id, rarity, number1, page=0):
     picked_chars = get_picked_chars(user_id)
     caption = (
         f"{get_type_char(char_data['type'])} {char_data['transl']}\n"
-        f"Редкость - {char_data['rarity']}\n"
+        f"Редкость - {loc_rarity(char_data['rarity'])}\n"
         f"<blockquote>├‣❤️ - {char_data['health']}\n"
         f"├‣💪 - {char_data['attack']}\n</blockquote>")
     if int(char_data['char_id']) in picked_chars:
@@ -2659,7 +2663,7 @@ def _handle_char_spin(call, super_spin):
             is_new = char_name not in char_list
             if is_new:
                 caption = (f'Новый персонаж: \n{type_emoji} {translation}\n'
-                           f'Редкость - {rarity}\n<blockquote>├‣❤️ - {health}\n├‣💪 - {attack}</blockquote>\n'
+                           f'Редкость - {loc_rarity(rarity)}\n<blockquote>├‣❤️ - {health}\n├‣💪 - {attack}</blockquote>\n'
                            f'💠 +{RARITY_POINTS[rarity]} pts')
             else:
                 shard_map = {
@@ -2669,7 +2673,7 @@ def _handle_char_spin(call, super_spin):
                 shards = shard_map.get(rarity, 0)
                 plus_shards(user_id, shards)
                 caption = (f'Повторка: \n{type_emoji} {translation}\n'
-                           f'Редкость - {rarity}\n<blockquote>├‣❤️ - {health}\n├‣💪 - {attack}</blockquote>\n'
+                           f'Редкость - {loc_rarity(rarity)}\n<blockquote>├‣❤️ - {health}\n├‣💪 - {attack}</blockquote>\n'
                            f'💠 +{RARITY_POINTS[rarity]} pts\n🔮 +{shards} {decline_fragments(shards)}')
 
             if rarity == 'legendary':
@@ -2754,7 +2758,7 @@ def generate_character_keyboard(user_id, rarity, page=0):
         image_path = char_data.get('image')
         caption = (
             f"{get_type_char(char_data['type'])} {char_data['transl']}\n"
-            f"Редкость - {char_data['rarity']}\n"
+            f"Редкость - {loc_rarity(char_data['rarity'])}\n"
             f"<blockquote>├‣❤️ - {char_data['health']}\n"
             f"├‣💪 - {char_data['attack']}\n</blockquote>")
         return markup, caption, image_path
