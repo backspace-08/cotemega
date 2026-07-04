@@ -193,7 +193,7 @@ def is_message_old(call):
             return True
         return False
     except Exception as e:
-        print(f"Ошибка при проверке возраста сообщения: {e}")
+        logger.error(f"Ошибка при проверке возраста сообщения: {e}")
         return False
 
 
@@ -203,7 +203,7 @@ def safe_delete_message(bot, chat_id, message_id):
         return True
     except telebot.apihelper.ApiTelegramException as e:
         if "message to delete not found" not in str(e):
-            print(f"Ошибка удаления: {e}")
+            logger.error(f"Ошибка удаления: {e}")
         return False
     except Exception as e:
         print(f"Общая ошибка: {e}")
@@ -881,10 +881,10 @@ def handle_pick_charpage(call):
                     reply_markup=markup)
         bot.answer_callback_query(call.id)
     except ValueError as e:
-        print(f"Ошибка разбора callback_data: {e}")
+        logger.error(f"Ошибка разбора callback_data: {e}")
         bot.answer_callback_query(call.id, "⚠️ Ошибка: неверный формат запроса")
     except Exception as e:
-        print(f"Ошибка в handle_pick_charpage: {e}")
+        logger.error(f"Ошибка в handle_pick_charpage: {e}")
         bot.answer_callback_query(call.id, "⚠️ Произошла ошибка")
 
 
@@ -908,7 +908,7 @@ def pick_char(user_id,char_id,number):
             (char_id,user_id),commit=True
         )
     except Exception as e:
-        print(f"Ошибка при выборе перса в колоду:{e}")
+        logger.error(f"Ошибка при выборе перса в колоду:{e}")
 
 
 @bot.callback_query_handler(func=lambda call: call.data.startswith('arena_pick_'))
@@ -2003,7 +2003,7 @@ def delete_queue_messages_all(user_id):
         if "message to delete not found" in str(e):
             print(f"Сообщение {message_id} уже удалено")
         else:
-            print(f"Ошибка удаления сообщения {message_id}: {e}")
+            logger.error(f"Ошибка удаления сообщения {message_id}: {e}")
 
 
 def create_vs_message(user1_id, user2_id, user1_name, user2_name):
@@ -2337,7 +2337,7 @@ def process_special_image(message):
             "✅ Ваше изображение отправлено администратору! Ожидайте обработки."
         )
     except Exception as e:
-        print(f"Ошибка при отправке изображения админу: {e}")
+        logger.error(f"Ошибка при отправке изображения админу: {e}")
         bot.send_message(user_id, "❌ Произошла ошибка при отправке изображения")
     if user_id in waiting_for_special_image:
         del waiting_for_special_image[user_id]
@@ -2404,7 +2404,7 @@ def process_check1(message):
             "✅ Ваш чек отправлен администратору! Ожидайте обработки."
         )
     except Exception as e:
-        print(f"Ошибка при отправке изображения админу: {e}")
+        logger.error(f"Ошибка при отправке изображения админу: {e}")
         bot.send_message(user_id, "❌ Произошла ошибка при отправке изображения")
 
 
@@ -2461,7 +2461,7 @@ def process_check(call):
             "✅ Уведомление администратору! Ожидайте обработки."
         )
     except Exception as e:
-        print(f"Ошибка при отправке уведомления админу: {e}")
+        logger.error(f"Ошибка при отправке уведомления админу: {e}")
         bot.send_message(user_id, "❌ Произошла ошибка при отправке уведомления")
 
 
@@ -2473,7 +2473,7 @@ def menu(message):
     try:
         show_main_menu(chat_id=message.chat.id, user_id=user_id, username=username)
     except Exception as e:
-        print(f"Ошибка при обработке команды /menu: {e}")
+        logger.error(f"Ошибка при обработке команды /menu: {e}")
         bot.send_message(message.chat.id, "Произошла ошибка. Пожалуйста, попробуйте еще раз.")
 
 
@@ -2497,7 +2497,7 @@ def start_message(message):
             show_main_menu(chat_id=message.chat.id, user_id=user_id, username=username)
 
     except Exception as e:
-        print(f"Ошибка при обработке команды /start: {e}")
+        logger.error(f"Ошибка при обработке команды /start: {e}")
         bot.send_message(message.chat.id, "Произошла ошибка. Пожалуйста, попробуйте еще раз.")
 
 
@@ -2855,10 +2855,10 @@ def handle_view_charpage(call):
                     reply_markup=markup)
         bot.answer_callback_query(call.id)
     except ValueError as e:
-        print(f"Ошибка разбора callback_data: {e}")
+        logger.error(f"Ошибка разбора callback_data: {e}")
         bot.answer_callback_query(call.id, "⚠️ Ошибка: неверный формат запроса")
     except Exception as e:
-        print(f"Ошибка в handle_view_charpage: {e}")
+        logger.error(f"Ошибка в handle_view_charpage: {e}")
         bot.answer_callback_query(call.id, "⚠️ Произошла ошибка")
 
 
