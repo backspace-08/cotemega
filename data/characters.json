@@ -1,0 +1,1025 @@
+{
+  "characters": [
+    {
+      "id": 1,
+      "filename": "an_maezono.jpg",
+      "rarity": "common",
+      "name_en": "An Maezono",
+      "name_ru": "Ан Маедзоно",
+      "type": 2,
+      "health": 3200,
+      "attack": 1100
+    },
+    {
+      "id": 2,
+      "filename": "chihiro_shiranami.jpg",
+      "rarity": "common",
+      "name_en": "Chihiro Shiranami",
+      "name_ru": "Чихиро Ширанами",
+      "type": 4,
+      "health": 3100,
+      "attack": 1000
+    },
+    {
+      "id": 3,
+      "filename": "emi_tamiya.jpg",
+      "rarity": "common",
+      "name_en": "Emi Tamiya",
+      "name_ru": "Эми Тамия",
+      "type": 3,
+      "health": 3200,
+      "attack": 1100
+    },
+    {
+      "id": 4,
+      "filename": "haruki_yamauchi.jpg",
+      "rarity": "common",
+      "name_en": "Haruki Yamauchi",
+      "name_ru": "Харуки Ямаучи",
+      "type": 2,
+      "health": 3300,
+      "attack": 1100
+    },
+    {
+      "id": 5,
+      "filename": "hideo_sotomura.jpg",
+      "rarity": "common",
+      "name_en": "Hideo Sotomura",
+      "name_ru": "Хидео Сотомура",
+      "type": 3,
+      "health": 3300,
+      "attack": 1100
+    },
+    {
+      "id": 6,
+      "filename": "kenta_yoshida.jpg",
+      "rarity": "common",
+      "name_en": "Kenta Yoshida",
+      "name_ru": "Кента Йошида",
+      "type": 2,
+      "health": 3200,
+      "attack": 1100
+    },
+    {
+      "id": 7,
+      "filename": "koji_machida.jpg",
+      "rarity": "common",
+      "name_en": "Koji Machida",
+      "name_ru": "Коджи Мачида",
+      "type": 1,
+      "health": 3300,
+      "attack": 1100
+    },
+    {
+      "id": 8,
+      "filename": "kokoro_inogashira.jpg",
+      "rarity": "common",
+      "name_en": "Kokoro Inogashira",
+      "name_ru": "Кокоро Иногашира",
+      "type": 4,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 9,
+      "filename": "kozue_minamikata.jpg",
+      "rarity": "common",
+      "name_en": "Kozue Minamikata",
+      "name_ru": "Козуэ Минамиката",
+      "type": 4,
+      "health": 3200,
+      "attack": 1100
+    },
+    {
+      "id": 10,
+      "filename": "kyogo_komiya.jpg",
+      "rarity": "common",
+      "name_en": "Kyogo Komiya",
+      "name_ru": "Кёго Комия",
+      "type": 3,
+      "health": 3100,
+      "attack": 1000
+    },
+    {
+      "id": 11,
+      "filename": "kyosuke_okitani.jpg",
+      "rarity": "common",
+      "name_en": "Kyosuke Okitani",
+      "name_ru": "Кёске Окитани",
+      "type": 2,
+      "health": 3100,
+      "attack": 1000
+    },
+    {
+      "id": 12,
+      "filename": "makoto_sumida.jpg",
+      "rarity": "common",
+      "name_en": "Makoto Sumida",
+      "name_ru": "Макото Сумида",
+      "type": 4,
+      "health": 3100,
+      "attack": 1100
+    },
+    {
+      "id": 13,
+      "filename": "minori_kinoshita.jpg",
+      "rarity": "common",
+      "name_en": "Minori Kinoshita",
+      "name_ru": "Минори Киношита",
+      "type": 2,
+      "health": 3200,
+      "attack": 1000
+    },
+    {
+      "id": 14,
+      "filename": "momoko_ikari.jpg",
+      "rarity": "common",
+      "name_en": "Momoko Ikari",
+      "name_ru": "Момоко Икари",
+      "type": 1,
+      "health": 3000,
+      "attack": 1100
+    },
+    {
+      "id": 15,
+      "filename": "nene_mori.jpg",
+      "rarity": "common",
+      "name_en": "Nene Mori",
+      "name_ru": "Нене Мори",
+      "type": 4,
+      "health": 3200,
+      "attack": 1000
+    },
+    {
+      "id": 16,
+      "filename": "norihito_watanabe.jpg",
+      "rarity": "common",
+      "name_en": "Norihito Watanabe",
+      "name_ru": "Норихито Ватанабе",
+      "type": 4,
+      "health": 3200,
+      "attack": 1000
+    },
+    {
+      "id": 17,
+      "filename": "reo_kondo.jpg",
+      "rarity": "common",
+      "name_en": "Reo Kondo",
+      "name_ru": "Рео Кондо",
+      "type": 2,
+      "health": 3100,
+      "attack": 1000
+    },
+    {
+      "id": 18,
+      "filename": "rika_morofuji.jpg",
+      "rarity": "common",
+      "name_en": "Rika Morofuji",
+      "name_ru": "Рика Морофуджи",
+      "type": 3,
+      "health": 3300,
+      "attack": 1000
+    },
+    {
+      "id": 19,
+      "filename": "ryotaro_hondo.jpg",
+      "rarity": "common",
+      "name_en": "Ryotaro Hondo",
+      "name_ru": "Рётаро Хондо",
+      "type": 2,
+      "health": 3100,
+      "attack": 1100
+    },
+    {
+      "id": 20,
+      "filename": "saki_yamashita.jpg",
+      "rarity": "common",
+      "name_en": "Saki Yamashita",
+      "name_ru": "Саки Ямашита",
+      "type": 0,
+      "health": 1400,
+      "attack": 500
+    },
+    {
+      "id": 21,
+      "filename": "satsuki_shinohara.jpg",
+      "rarity": "common",
+      "name_en": "Satsuki Shinohara",
+      "name_ru": "Сацуки Шинохара",
+      "type": 2,
+      "health": 3200,
+      "attack": 1100
+    },
+    {
+      "id": 22,
+      "filename": "sayo_ando.jpg",
+      "rarity": "common",
+      "name_en": "Sayo Ando",
+      "name_ru": "Сайо Андо",
+      "type": 2,
+      "health": 3100,
+      "attack": 1100
+    },
+    {
+      "id": 23,
+      "filename": "shiho_manabe.jpg",
+      "rarity": "common",
+      "name_en": "Shiho Manabe",
+      "name_ru": "Шихо Манабе",
+      "type": 2,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 24,
+      "filename": "soshi_miyamoto.jpg",
+      "rarity": "common",
+      "name_en": "Soshi Miyamoto",
+      "name_ru": "Соши Миямото",
+      "type": 3,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 25,
+      "filename": "susumu_moriyama.jpg",
+      "rarity": "common",
+      "name_en": "Susumu Moriyama",
+      "name_ru": "Сусуму Морияма",
+      "type": 3,
+      "health": 3000,
+      "attack": 1100
+    },
+    {
+      "id": 26,
+      "filename": "tetsuya_hamaguchi.jpg",
+      "rarity": "common",
+      "name_en": "Tetsuya Hamaguchi",
+      "name_ru": "Тецуя Хамагучи",
+      "type": 3,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 27,
+      "filename": "wataru_ijuin.jpg",
+      "rarity": "common",
+      "name_en": "Wataru Ijuin",
+      "name_ru": "Ватару Иджуин",
+      "type": 3,
+      "health": 3000,
+      "attack": 1100
+    },
+    {
+      "id": 28,
+      "filename": "yahiko_totsuka.jpg",
+      "rarity": "common",
+      "name_en": "Yahiko Totsuka",
+      "name_ru": "Яхико Тоцука",
+      "type": 3,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 29,
+      "filename": "yume_kobashi.jpg",
+      "rarity": "common",
+      "name_en": "Yume Kobashi",
+      "name_ru": "Юме Кобаши",
+      "type": 3,
+      "health": 3300,
+      "attack": 1000
+    },
+    {
+      "id": 30,
+      "filename": "airi_sakura.jpg",
+      "rarity": "rare",
+      "name_en": "Airi Sakura",
+      "name_ru": "Айри Сакура",
+      "type": 4,
+      "health": 3900,
+      "attack": 1200
+    },
+    {
+      "id": 31,
+      "filename": "akito_miyake.jpg",
+      "rarity": "rare",
+      "name_en": "Akito Miyake",
+      "name_ru": "Акито Мияке",
+      "type": 2,
+      "health": 3700,
+      "attack": 1200
+    },
+    {
+      "id": 32,
+      "filename": "albert_yamada.jpg",
+      "rarity": "rare",
+      "name_en": "Albert Yamada",
+      "name_ru": "Альберт Ямада",
+      "type": 2,
+      "health": 3800,
+      "attack": 1300
+    },
+    {
+      "id": 33,
+      "filename": "daichi_ishizaki.jpg",
+      "rarity": "rare",
+      "name_en": "Daichi Ishizaki",
+      "name_ru": "Даичи Ишизаки",
+      "type": 2,
+      "health": 3600,
+      "attack": 1200
+    },
+    {
+      "id": 34,
+      "filename": "haruka_hasebe.jpg",
+      "rarity": "rare",
+      "name_en": "Haruka Hasebe",
+      "name_ru": "Харука Хасебе",
+      "type": 4,
+      "health": 3700,
+      "attack": 1200
+    },
+    {
+      "id": 35,
+      "filename": "hayato_kito.jpg",
+      "rarity": "rare",
+      "name_en": "Hayato Kito",
+      "name_ru": "Хаято Кито",
+      "type": 2,
+      "health": 3500,
+      "attack": 1200
+    },
+    {
+      "id": 36,
+      "filename": "hiroya_tokito.jpg",
+      "rarity": "rare",
+      "name_en": "Hiroya Tokito",
+      "name_ru": "Хироя Токито",
+      "type": 1,
+      "health": 3800,
+      "attack": 1300
+    },
+    {
+      "id": 37,
+      "filename": "ikkei_shimazaki.jpg",
+      "rarity": "rare",
+      "name_en": "Ikkei Shimazaki",
+      "name_ru": "Иккей Шимазаки",
+      "type": 3,
+      "health": 3500,
+      "attack": 1300
+    },
+    {
+      "id": 38,
+      "filename": "kayano_onodera.jpg",
+      "rarity": "rare",
+      "name_en": "Kayano Onodera",
+      "name_ru": "Каяно Онодера",
+      "type": 2,
+      "health": 3600,
+      "attack": 1200
+    },
+    {
+      "id": 39,
+      "filename": "kousei_sanada.jpg",
+      "rarity": "rare",
+      "name_en": "Kousei Sanada",
+      "name_ru": "Косей Санада",
+      "type": 1,
+      "health": 3700,
+      "attack": 1200
+    },
+    {
+      "id": 40,
+      "filename": "mako_amikura.jpg",
+      "rarity": "rare",
+      "name_en": "Mako Amikura",
+      "name_ru": "Мако Амикура",
+      "type": 4,
+      "health": 3800,
+      "attack": 1200
+    },
+    {
+      "id": 41,
+      "filename": "maya_sato.jpg",
+      "rarity": "rare",
+      "name_en": "Maya Sato",
+      "name_ru": "Майя Сато",
+      "type": 4,
+      "health": 3700,
+      "attack": 1300
+    },
+    {
+      "id": 42,
+      "filename": "mei-yu_wang.jpg",
+      "rarity": "rare",
+      "name_en": "Mei-Yu Wang",
+      "name_ru": "mei-yu_wang",
+      "type": 3,
+      "health": 3700,
+      "attack": 1300
+    },
+    {
+      "id": 43,
+      "filename": "miki_yamamura.jpg",
+      "rarity": "rare",
+      "name_en": "Miki Yamamura",
+      "name_ru": "Мики Ямамура",
+      "type": 3,
+      "health": 3500,
+      "attack": 1200
+    },
+    {
+      "id": 44,
+      "filename": "ryoko_nishikawa.jpg",
+      "rarity": "rare",
+      "name_en": "Ryoko Nishikawa",
+      "name_ru": "Рёко Нишикава",
+      "type": 1,
+      "health": 3800,
+      "attack": 1300
+    },
+    {
+      "id": 45,
+      "filename": "satoru_kaneda.jpg",
+      "rarity": "rare",
+      "name_en": "Satoru Kaneda",
+      "name_ru": "Сатору Канеда",
+      "type": 3,
+      "health": 3900,
+      "attack": 1200
+    },
+    {
+      "id": 46,
+      "filename": "sou_shibata.jpg",
+      "rarity": "rare",
+      "name_en": "Sou Shibata",
+      "name_ru": "Со Шибата",
+      "type": 4,
+      "health": 3600,
+      "attack": 1200
+    },
+    {
+      "id": 47,
+      "filename": "takeko_nishino.jpg",
+      "rarity": "rare",
+      "name_en": "Takeko Nishino",
+      "name_ru": "Такеко Нишино",
+      "type": 4,
+      "health": 3500,
+      "attack": 1200
+    },
+    {
+      "id": 48,
+      "filename": "teruhiko_yukimura.jpg",
+      "rarity": "rare",
+      "name_en": "Teruhiko Yukimura",
+      "name_ru": "Терухико Юкимура",
+      "type": 0,
+      "health": 2100,
+      "attack": 700
+    },
+    {
+      "id": 49,
+      "filename": "yuki_himeno.jpg",
+      "rarity": "rare",
+      "name_en": "Yuki Himeno",
+      "name_ru": "Юки Химено",
+      "type": 3,
+      "health": 3800,
+      "attack": 1200
+    },
+    {
+      "id": 50,
+      "filename": "ai_morishita.jpg",
+      "rarity": "epic",
+      "name_en": "Ai Morishita",
+      "name_ru": "Ай Моришита",
+      "type": 1,
+      "health": 4300,
+      "attack": 1400
+    },
+    {
+      "id": 51,
+      "filename": "akane_tachibana.jpg",
+      "rarity": "epic",
+      "name_en": "Akane Tachibana",
+      "name_ru": "Акане Тачибана",
+      "type": 3,
+      "health": 4200,
+      "attack": 1500
+    },
+    {
+      "id": 52,
+      "filename": "asuka_shiraishi.jpg",
+      "rarity": "epic",
+      "name_en": "Asuka Shiraishi",
+      "name_ru": "Асука Шираиши",
+      "type": 0,
+      "health": 2800,
+      "attack": 1000
+    },
+    {
+      "id": 53,
+      "filename": "chiaki_matsushita.jpg",
+      "rarity": "epic",
+      "name_en": "Chiaki Matsushita",
+      "name_ru": "Чиаки Мацушита",
+      "type": 1,
+      "health": 4400,
+      "attack": 1500
+    },
+    {
+      "id": 54,
+      "filename": "hiyori_shiina.jpg",
+      "rarity": "epic",
+      "name_en": "Hiyori Shiina",
+      "name_ru": "Хиёри Шиина",
+      "type": 4,
+      "health": 4300,
+      "attack": 1400
+    },
+    {
+      "id": 55,
+      "filename": "ikuto_kiriyama.jpg",
+      "rarity": "epic",
+      "name_en": "Ikuto Kiriyama",
+      "name_ru": "Икуто Кирияма",
+      "type": 3,
+      "health": 4200,
+      "attack": 1500
+    },
+    {
+      "id": 56,
+      "filename": "kazuomi_housen.jpg",
+      "rarity": "epic",
+      "name_en": "Kazuomi Housen",
+      "name_ru": "Кадзуоми Хосен",
+      "type": 2,
+      "health": 4200,
+      "attack": 1500
+    },
+    {
+      "id": 57,
+      "filename": "kei_karuizawa.jpg",
+      "rarity": "epic",
+      "name_en": "Kei Karuizawa",
+      "name_ru": "Кей Каруизава",
+      "type": 4,
+      "health": 4300,
+      "attack": 1400
+    },
+    {
+      "id": 58,
+      "filename": "ken_sudou.jpg",
+      "rarity": "epic",
+      "name_en": "Ken Sudou",
+      "name_ru": "Кен Судо",
+      "type": 2,
+      "health": 4300,
+      "attack": 1400
+    },
+    {
+      "id": 59,
+      "filename": "kikyou_kushida.jpg",
+      "rarity": "epic",
+      "name_en": "Kikyou Kushida",
+      "name_ru": "Кикё Кушида",
+      "type": 0,
+      "health": 3100,
+      "attack": 1100
+    },
+    {
+      "id": 60,
+      "filename": "kouhei_katsuragi.jpg",
+      "rarity": "epic",
+      "name_en": "Kouhei Katsuragi",
+      "name_ru": "Кохей Кацураги",
+      "type": 0,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 61,
+      "filename": "kyou_ishigami.jpg",
+      "rarity": "epic",
+      "name_en": "Kyou Ishigami",
+      "name_ru": "Кё Ишигами",
+      "type": 3,
+      "health": 4300,
+      "attack": 1500
+    },
+    {
+      "id": 62,
+      "filename": "masayoshi_hashimoto.jpg",
+      "rarity": "epic",
+      "name_en": "Masayoshi Hashimoto",
+      "name_ru": "Масаёши Хашимото",
+      "type": 0,
+      "health": 2800,
+      "attack": 1000
+    },
+    {
+      "id": 63,
+      "filename": "masumi_kamuro.jpg",
+      "rarity": "epic",
+      "name_en": "Masumi Kamuro",
+      "name_ru": "Масуми Камуро",
+      "type": 2,
+      "health": 4500,
+      "attack": 1400
+    },
+    {
+      "id": 64,
+      "filename": "mio_ibuki.jpg",
+      "rarity": "epic",
+      "name_en": "Mio Ibuki",
+      "name_ru": "Мио Ибуки",
+      "type": 2,
+      "health": 4500,
+      "attack": 1500
+    },
+    {
+      "id": 65,
+      "filename": "nazuna_asahina.jpg",
+      "rarity": "epic",
+      "name_en": "Nazuna Asahina",
+      "name_ru": "Надзуна Асахина",
+      "type": 4,
+      "health": 4200,
+      "attack": 1500
+    },
+    {
+      "id": 66,
+      "filename": "riku_utomiya.jpg",
+      "rarity": "epic",
+      "name_en": "Riku Utomiya",
+      "name_ru": "Рику Утомия",
+      "type": 1,
+      "health": 4300,
+      "attack": 1500
+    },
+    {
+      "id": 67,
+      "filename": "ryuji_kanzaki.jpg",
+      "rarity": "epic",
+      "name_en": "Ryuji Kanzaki",
+      "name_ru": "Рюджи Канзаки",
+      "type": 2,
+      "health": 4200,
+      "attack": 1500
+    },
+    {
+      "id": 68,
+      "filename": "sakurako_tsubaki.jpg",
+      "rarity": "epic",
+      "name_en": "Sakurako Tsubaki",
+      "name_ru": "Сакурако Цубаки",
+      "type": 0,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 69,
+      "filename": "yousuke_hirata.jpg",
+      "rarity": "epic",
+      "name_en": "Yousuke Hirata",
+      "name_ru": "Йосуке Хирата",
+      "type": 0,
+      "health": 3000,
+      "attack": 1000
+    },
+    {
+      "id": 70,
+      "filename": "arisu_sakayanagi.jpg",
+      "rarity": "mythic",
+      "name_en": "Arisu Sakayanagi",
+      "name_ru": "Арису Сакаянаги",
+      "type": 1,
+      "health": 4900,
+      "attack": 1700
+    },
+    {
+      "id": 71,
+      "filename": "chie_hoshinomiya.jpg",
+      "rarity": "mythic",
+      "name_en": "Chie Hoshinomiya",
+      "name_ru": "Чие Хошиномия",
+      "type": 0,
+      "health": 3800,
+      "attack": 1300
+    },
+    {
+      "id": 72,
+      "filename": "fuuka_kiryuin.jpg",
+      "rarity": "mythic",
+      "name_en": "Fuuka Kiryuin",
+      "name_ru": "fuuka_kiryuin",
+      "type": 2,
+      "health": 5300,
+      "attack": 1600
+    },
+    {
+      "id": 73,
+      "filename": "honami_ichinose.jpg",
+      "rarity": "mythic",
+      "name_en": "Honami Ichinose",
+      "name_ru": "Хонами Ичиносе",
+      "type": 4,
+      "health": 5000,
+      "attack": 1800
+    },
+    {
+      "id": 74,
+      "filename": "kakeru_ryuen.jpg",
+      "rarity": "mythic",
+      "name_en": "Kakeru Ryuen",
+      "name_ru": "Какеру Рьюен",
+      "type": 2,
+      "health": 5100,
+      "attack": 1700
+    },
+    {
+      "id": 75,
+      "filename": "katsunori_shiba.jpg",
+      "rarity": "mythic",
+      "name_en": "Katsunori Shiba",
+      "name_ru": "Кацунори Шиба",
+      "type": 1,
+      "health": 5300,
+      "attack": 1700
+    },
+    {
+      "id": 76,
+      "filename": "kazuma_sakagami.jpg",
+      "rarity": "mythic",
+      "name_en": "Kazuma Sakagami",
+      "name_ru": "Казума Сакагами",
+      "type": 3,
+      "health": 5100,
+      "attack": 1700
+    },
+    {
+      "id": 77,
+      "filename": "manabu_horikita.jpg",
+      "rarity": "mythic",
+      "name_en": "Manabu Horikita",
+      "name_ru": "Манабу Хорикита",
+      "type": 0,
+      "health": 4400,
+      "attack": 1300
+    },
+    {
+      "id": 78,
+      "filename": "miyabi_nagumo.jpg",
+      "rarity": "mythic",
+      "name_en": "Miyabi Nagumo",
+      "name_ru": "Мияби Нагумо",
+      "type": 1,
+      "health": 5200,
+      "attack": 1700
+    },
+    {
+      "id": 79,
+      "filename": "narumori_sakayanagi.jpg",
+      "rarity": "mythic",
+      "name_en": "Narumori Sakayanagi",
+      "name_ru": "Нарумори Сакаянаги",
+      "type": 3,
+      "health": 5200,
+      "attack": 1800
+    },
+    {
+      "id": 80,
+      "filename": "sae_chabashira.jpg",
+      "rarity": "mythic",
+      "name_en": "Sae Chabashira",
+      "name_ru": "Саэ Чабашира",
+      "type": 3,
+      "health": 5200,
+      "attack": 1700
+    },
+    {
+      "id": 81,
+      "filename": "suzune_horikita.jpg",
+      "rarity": "mythic",
+      "name_en": "Suzune Horikita",
+      "name_ru": "Сузуне Хорикита",
+      "type": 3,
+      "health": 5000,
+      "attack": 1700
+    },
+    {
+      "id": 82,
+      "filename": "tomonari_mashima.jpg",
+      "rarity": "mythic",
+      "name_en": "Tomonari Mashima",
+      "name_ru": "Томонари Машима",
+      "type": 4,
+      "health": 5300,
+      "attack": 1800
+    },
+    {
+      "id": 83,
+      "filename": "tsubasa_nanase.jpg",
+      "rarity": "mythic",
+      "name_en": "Tsubasa Nanase",
+      "name_ru": "Цубаса Нанасе",
+      "type": 0,
+      "health": 4300,
+      "attack": 1400
+    },
+    {
+      "id": 84,
+      "filename": "atsuomi_ayanokoji.mp4",
+      "rarity": "legendary",
+      "name_en": "Atsuomi Ayanokoji",
+      "name_ru": "Ацуоми Аянокоджи",
+      "type": 0,
+      "health": 6500,
+      "attack": 2000
+    },
+    {
+      "id": 85,
+      "filename": "ichika_amasawa.mp4",
+      "rarity": "legendary",
+      "name_en": "Ichika Amasawa",
+      "name_ru": "Ичика Амасава",
+      "type": 2,
+      "health": 6200,
+      "attack": 2000
+    },
+    {
+      "id": 86,
+      "filename": "kiyotaka_ayanokoji.mp4",
+      "rarity": "legendary",
+      "name_en": "Kiyotaka Ayanokoji",
+      "name_ru": "Киётака Аянокоджи",
+      "type": 1,
+      "health": 6000,
+      "attack": 2000
+    },
+    {
+      "id": 87,
+      "filename": "president_kouenji.mp4",
+      "rarity": "legendary",
+      "name_en": "President Kouenji",
+      "name_ru": "Президент Коенджи",
+      "type": 2,
+      "health": 6000,
+      "attack": 2100
+    },
+    {
+      "id": 88,
+      "filename": "prime_minister_kijima.mp4",
+      "rarity": "legendary",
+      "name_en": "Prime Minister Kijima",
+      "name_ru": "Премьер-Министр Киджима",
+      "type": 0,
+      "health": 5900,
+      "attack": 2000
+    },
+    {
+      "id": 89,
+      "filename": "rokusuke_kouenji.mp4",
+      "rarity": "legendary",
+      "name_en": "Rokusuke Kouenji",
+      "name_ru": "Рокусуке Коенджи",
+      "type": 2,
+      "health": 5900,
+      "attack": 1900
+    },
+    {
+      "id": 90,
+      "filename": "shiro.mp4",
+      "rarity": "legendary",
+      "name_en": "Shiro",
+      "name_ru": "Широ",
+      "type": 3,
+      "health": 6000,
+      "attack": 2100
+    },
+    {
+      "id": 91,
+      "filename": "takuya_yagami.mp4",
+      "rarity": "legendary",
+      "name_en": "Takuya Yagami",
+      "name_ru": "Такуя Ягами",
+      "type": 3,
+      "health": 5700,
+      "attack": 2000
+    },
+    {
+      "id": 92,
+      "filename": "tokinari_tsukishiro.mp4",
+      "rarity": "legendary",
+      "name_en": "Tokinari Tsukishiro",
+      "name_ru": "Токинари Цукиширо",
+      "type": 1,
+      "health": 6200,
+      "attack": 1900
+    },
+    {
+      "id": 93,
+      "filename": "yuki.mp4",
+      "rarity": "legendary",
+      "name_en": "Yuki",
+      "name_ru": "Юки",
+      "type": 4,
+      "health": 5700,
+      "attack": 2100
+    },
+    {
+      "id": 94,
+      "filename": "amasawa_temzz.jpg",
+      "rarity": "special",
+      "name_en": "Amasawa Temzz",
+      "name_ru": "amasawa_temzz"
+    },
+    {
+      "id": 95,
+      "filename": "arena_special1.jpg",
+      "rarity": "special",
+      "name_en": "Arena Special1",
+      "name_ru": "arena_special1"
+    },
+    {
+      "id": 96,
+      "filename": "ayano_diman.jpg",
+      "rarity": "special",
+      "name_en": "Ayano Diman",
+      "name_ru": "ayano_diman"
+    },
+    {
+      "id": 97,
+      "filename": "ayano_product.jpg",
+      "rarity": "special",
+      "name_en": "Ayano Product",
+      "name_ru": "ayano_product"
+    },
+    {
+      "id": 98,
+      "filename": "ayano_ryuen_popcorn.jpg",
+      "rarity": "special",
+      "name_en": "Ayano Ryuen Popcorn",
+      "name_ru": "ayano_ryuen_popcorn"
+    },
+    {
+      "id": 99,
+      "filename": "ayano_unpretty.jpg",
+      "rarity": "special",
+      "name_en": "Ayano Unpretty",
+      "name_ru": "ayano_unpretty"
+    },
+    {
+      "id": 100,
+      "filename": "kei_vertigo.jpg",
+      "rarity": "special",
+      "name_en": "Kei Vertigo",
+      "name_ru": "kei_vertigo"
+    },
+    {
+      "id": 101,
+      "filename": "koenji_product.jpg",
+      "rarity": "special",
+      "name_en": "Koenji Product",
+      "name_ru": "koenji_product"
+    },
+    {
+      "id": 102,
+      "filename": "kushida_ramazan.jpg",
+      "rarity": "special",
+      "name_en": "Kushida Ramazan",
+      "name_ru": "kushida_ramazan"
+    },
+    {
+      "id": 103,
+      "filename": "shiina_senpui.jpg",
+      "rarity": "special",
+      "name_en": "Shiina Senpui",
+      "name_ru": "shiina_senpui"
+    },
+    {
+      "id": 104,
+      "filename": "suzune_kgb.jpg",
+      "rarity": "special",
+      "name_en": "Suzune Kgb",
+      "name_ru": "suzune_kgb"
+    },
+    {
+      "id": 105,
+      "filename": "suzune_mio_popcorn.jpg",
+      "rarity": "special",
+      "name_en": "Suzune Mio Popcorn",
+      "name_ru": "suzune_mio_popcorn"
+    },
+    {
+      "id": 106,
+      "filename": "suzune_popcorn.jpg",
+      "rarity": "special",
+      "name_en": "Suzune Popcorn",
+      "name_ru": "suzune_popcorn"
+    }
+  ]
+}

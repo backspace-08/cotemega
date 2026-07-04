@@ -1,0 +1,5 @@
+.env
+__pycache__/
+*.pyc
+bot_errors.log
+arena_battles.json
