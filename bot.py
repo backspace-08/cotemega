@@ -4,10 +4,12 @@ from telebot import types
 from datetime import datetime, timedelta
 from functools import partial
 from config import BOT_TOKEN, RARITY_POINTS, PRICES, CHARS_IMAGES_DIR, SUPER_SPIN_PROBS, NORMAL_SPIN_PROBS
+from config import ADMIN_ID, PRICES, WEBHOOK_URL, WEBHOOK_LISTEN, WEBHOOK_PORT
 import logging
 from logging.handlers import RotatingFileHandler
 import traceback
 import time
+from flask import Flask, request
 from config import ADMIN_ID, PRICES, WEBHOOK_URL, WEBHOOK_LISTEN, WEBHOOK_PORT
 from bd_workers import load_user,save_user,plus_balance,plus_shards,plus_spins,plus_super_spins,can_press_button,get_character_data
 from bd_workers import get_spins,get_super_spins,save_user_character,save_user,minus_spins,minus_super_spins,get_db_connection,get_user_id
@@ -85,15 +87,32 @@ def fix_negative_spins(user_id):
     """, (user_id,), commit=True)
 
 
+webhook_app = Flask(__name__)
+
+@webhook_app.route('/webhook', methods=['POST'])
+def webhook_handler():
+    if request.headers.get('content-type') == 'application/json':
+        json_string = request.get_data().decode('utf-8')
+        update = telebot.types.Update.de_json(json_string)
+        bot.process_new_updates([update])
+        return '', 200
+    return 'Forbidden', 403
+
+@webhook_app.route('/health', methods=['GET'])
+def health():
+    return 'OK', 200
+
+
 def run_bot():
     execute_query("DELETE FROM arena_queue WHERE opponent_id IS NULL", commit=True)
     logger.info("Cleaned stale arena queue entries")
     if WEBHOOK_URL:
         logger.info(f"Setting webhook: {WEBHOOK_URL}")
         bot.remove_webhook()
+        time.sleep(0.5)
         bot.set_webhook(url=WEBHOOK_URL)
-        logger.info(f"Starting webhook on {WEBHOOK_LISTEN}:{WEBHOOK_PORT}")
-        bot.start_webhook(listen=WEBHOOK_LISTEN, port=WEBHOOK_PORT, url_path="webhook")
+        logger.info(f"Starting webhook server on {WEBHOOK_LISTEN}:{WEBHOOK_PORT}")
+        webhook_app.run(host=WEBHOOK_LISTEN, port=WEBHOOK_PORT, threaded=True)
     else:
         logger.info("WEBHOOK_URL not set, falling back to polling")
         while True:
