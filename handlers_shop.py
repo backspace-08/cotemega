@@ -17,6 +17,7 @@ def show_donate_menu(call):
     chat_id = call.message.chat.id
     markup = types.InlineKeyboardMarkup(row_width=2)
     buttons = [
+        types.InlineKeyboardButton("35🔮", callback_data="buy_lava:50"),
         types.InlineKeyboardButton("80🔮", callback_data="buy_lava:100"),
         types.InlineKeyboardButton("300🔮", callback_data="buy_lava:300"),
         types.InlineKeyboardButton("600🔮", callback_data="buy_lava:500"),

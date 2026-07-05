@@ -9,6 +9,7 @@ from telebot import types
 LAVA_API_URL = "https://gate.lava.top"
 
 SHARD_MAP = {
+    '50': 35,
     '100': 80,
     '300': 300,
     '500': 600,
