@@ -30,16 +30,12 @@ PRICES = """
 💵 <b>Цены</b>
 <blockquote>80🔮 - 100₽  1.3$
 300🔮 - 300₽  3.85$
-600🔮 - 500₽  6.40$
-1300🔮 - 1000₽  12.75$
-Спешл 🤍 - 550₽  7$</blockquote>
+ 600🔮 - 500₽  6.40$
+ 1300🔮 - 1000₽  12.75$</blockquote>
 
 <b>💳 Способы оплаты</b>
-<blockquote><b> 1️⃣ Для игроков из России </b>
-    🇷🇺  Переводом по номеру карты <code>2202205047120768</code>
-
-<b> 2️⃣ Международная оплата </b>
-    🌍  С помощью Boosty
+<blockquote><b> 🌍 Международная оплата</b>
+    Платеж через lava.top
 </blockquote>
 <b>Чтобы задонатить, выберите нужный товар, выберите способ оплаты и следуйте данным вам инструкциям</b>
 """
@@ -75,5 +71,9 @@ RARITY_DISPLAY = {
     'legendary': 'легендарная',
     'special': 'специальная',
 }
+
+LAVA_API_KEY = os.getenv('LAVA_API_KEY', '')
+LAVA_WEBHOOK_SECRET = os.getenv('LAVA_WEBHOOK_SECRET', '')
+LAVA_OFFER_ID = os.getenv('LAVA_OFFER_ID', '')
 
 os.makedirs(CHARS_IMAGES_DIR, exist_ok=True)

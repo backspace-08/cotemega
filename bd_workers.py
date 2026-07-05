@@ -7,7 +7,8 @@ import logging
 from pytz import UTC
 from datetime import timezone
 from logging.handlers import RotatingFileHandler
-# Инициализация пула соединений
+
+
 connection_pool = psycopg2.pool.ThreadedConnectionPool(
     minconn=2,
     maxconn=8,
