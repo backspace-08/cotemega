@@ -15,7 +15,6 @@ from collections import defaultdict
 import threading
 import json
 import hashlib
-import hmac
 from urllib.parse import urlencode
 
 user_locks = defaultdict(Lock)
@@ -114,21 +113,29 @@ def yoomoney_webhook_handler():
     try:
         data = request.form.to_dict()
         if not data:
+            logger.warning("YooMoney webhook: empty request body")
             return 'Bad Request', 400
 
-        sign_received = data.get('sign', '')
+        logger.info(f"YooMoney webhook: received data: { {k: v for k, v in data.items() if k != 'sha1_hash'} }")
+
+        sha1_hash_received = data.get('sha1_hash', '')
         test_notification = data.get('test_notification', 'false')
 
-        params = {k: v for k, v in data.items() if k not in ('sign', 'sha1_hash')}
-        sorted_params = sorted(params.items())
-        param_string = '&'.join(f'{k}={v}' for k, v in sorted_params)
+        params_to_sign = ['notification_type', 'operation_id', 'amount', 'currency', 'datetime', 'sender', 'codepro']
+        param_values = [data.get(k, '') for k in params_to_sign]
+        param_values.append(YOOMONEY_SECRET_KEY)
+        param_values.append(data.get('label', ''))
+        param_string = '&'.join(param_values)
 
-        secret_bytes = YOOMONEY_SECRET_KEY.encode('utf-8')
-        sign_expected = hmac.new(secret_bytes, param_string.encode('utf-8'), hashlib.sha256).hexdigest()
+        logger.info(f"YooMoney webhook: hash string (secret hidden): {'&'.join(param_values[:7])}&<SECRET>&{param_values[-1]}")
+        sign_expected = hashlib.sha1(param_string.encode('utf-8')).hexdigest()
+        logger.info(f"YooMoney webhook: sha1 received={sha1_hash_received}, expected={sign_expected}")
 
-        if not hmac.compare_digest(sign_received, sign_expected):
+        if sign_expected != sha1_hash_received:
             logger.warning(f"YooMoney webhook: invalid sign")
             return 'Forbidden', 403
+
+        logger.info(f"YooMoney webhook: sign OK")
 
         label = data.get('label', '')
         amount = data.get('amount', '0')
@@ -146,6 +153,8 @@ def yoomoney_webhook_handler():
         item_type = parts[2]
         item_count = int(parts[3]) if len(parts) > 3 else 0
 
+        logger.info(f"YooMoney webhook: parsed label -> user_id={user_id}, type={item_type}, count={item_count}")
+
         if item_count <= 0:
             logger.warning(f"YooMoney webhook: bad item count in label: {label}")
             return 'OK', 200
@@ -155,19 +164,21 @@ def yoomoney_webhook_handler():
             return 'OK', 200
 
         if item_type == 'shards':
+            logger.info(f"YooMoney webhook: crediting {item_count} shards to user {user_id}")
             plus_shards(user_id, item_count)
             bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🔮 {item_count} осколков.")
         elif item_type == 'spins':
+            logger.info(f"YooMoney webhook: crediting {item_count} spins to user {user_id}")
             plus_spins(user_id, item_count)
             bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🎴 {item_count} круток.")
         elif item_type == 'super_spins':
+            logger.info(f"YooMoney webhook: crediting {item_count} super spins to user {user_id}")
             plus_super_spins(user_id, item_count)
             bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🧧 {item_count} супер круток.")
         else:
             logger.warning(f"YooMoney webhook: unknown item type: {item_type}")
             return 'OK', 200
 
-        logger.info(f"YooMoney payment: user={user_id}, {item_type}={item_count}, amount={amount}")
         return 'OK', 200
 
     except Exception as e:
