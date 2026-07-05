@@ -120,7 +120,7 @@ def handle_yoomoney_payment(call):
     shards = parts[2]
 
     label = f"user_{user_id}_shards_{shards}"
-    payment_url = f"https://yoomoney.ru/pay/{YOOMONEY_WALLET}?label={label}&quick-pay-amount={amount_rub}"
+    payment_url = f"https://yoomoney.ru/quickpay/confirm.xml?receiver={YOOMONEY_WALLET}&quickpay-form=shop&targets=%D0%9E%D0%BF%D0%BB%D0%B0%D1%82%D0%B0+%D0%BE%D1%81%D0%BA%D0%BE%D0%BB%D0%BA%D0%BE%D0%B2&paymentType=PC&sum={amount_rub}&label={label}"
 
     markup = types.InlineKeyboardMarkup(row_width=1)
     btn_pay = types.InlineKeyboardButton("💳 Оплатить", url=payment_url)
