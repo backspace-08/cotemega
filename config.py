@@ -77,4 +77,7 @@ LAVA_API_KEY = os.getenv('LAVA_API_KEY', '')
 LAVA_WEBHOOK_SECRET = os.getenv('LAVA_WEBHOOK_SECRET', '')
 LAVA_OFFER_ID = os.getenv('LAVA_OFFER_ID', '')
 
+YOOMONEY_WALLET = os.getenv('YOOMONEY_WALLET', '')
+YOOMONEY_SECRET_KEY = os.getenv('YOOMONEY_SECRET_KEY', '')
+
 os.makedirs(CHARS_IMAGES_DIR, exist_ok=True)

@@ -3,6 +3,7 @@ from bot_core import is_message_old, safe_delete_message
 from bot_core import decline_fragments, decline_spins, exchange_menu_text, exchange_menu
 from bot_core import spins_type
 from config import PRICES
+from config import YOOMONEY_WALLET
 from bd_workers import plus_spins, plus_super_spins
 from bd_workers import get_spins, get_super_spins
 from bd_workers import get_shards, new_shards_db
@@ -17,11 +18,11 @@ def show_donate_menu(call):
     chat_id = call.message.chat.id
     markup = types.InlineKeyboardMarkup(row_width=2)
     buttons = [
-        types.InlineKeyboardButton("35🔮", callback_data="buy_lava:50"),
-        types.InlineKeyboardButton("80🔮", callback_data="buy_lava:100"),
-        types.InlineKeyboardButton("300🔮", callback_data="buy_lava:300"),
-        types.InlineKeyboardButton("600🔮", callback_data="buy_lava:500"),
-        types.InlineKeyboardButton("1300🔮", callback_data="buy_lava:1000"),
+        types.InlineKeyboardButton("35🔮 — 50₽", callback_data="buy_yoomoney:50:35"),
+        types.InlineKeyboardButton("80🔮 — 100₽", callback_data="buy_yoomoney:100:80"),
+        types.InlineKeyboardButton("300🔮 — 300₽", callback_data="buy_yoomoney:300:300"),
+        types.InlineKeyboardButton("600🔮 — 500₽", callback_data="buy_yoomoney:500:600"),
+        types.InlineKeyboardButton("1300🔮 — 1000₽", callback_data="buy_yoomoney:1000:1300"),
     ]
     markup.add(*buttons)
     big_btn2 = types.InlineKeyboardButton("↩️ В меню", callback_data="main_menu")

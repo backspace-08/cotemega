@@ -2,6 +2,7 @@ import requests
 from bot_core import bot, logger, ADMIN_ID, pending_lava_payments
 from bot_core import is_message_old, safe_delete_message
 from config import LAVA_API_KEY, LAVA_OFFER_ID
+from config import YOOMONEY_WALLET
 from bd_workers import plus_shards
 import telebot
 from telebot import types
@@ -105,3 +106,27 @@ def process_lava_webhook(data):
         logger.info(f"Lava payment processed: user={user_id}, action={action}")
     except Exception as e:
         logger.error(f"Lava payment processing error: {e}")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('buy_yoomoney:'))
+def handle_yoomoney_payment(call):
+    if is_message_old(call):
+        return
+    user_id = str(call.from_user.id)
+    safe_delete_message(bot, call.message.chat.id, call.message.message_id)
+
+    parts = call.data.split(':')
+    amount_rub = parts[1]
+    shards = parts[2]
+
+    label = f"user_{user_id}_shards_{shards}"
+    payment_url = f"https://yoomoney.ru/pay/{YOOMONEY_WALLET}?label={label}&quick-pay-amount={amount_rub}"
+
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    btn_pay = types.InlineKeyboardButton("💳 Оплатить", url=payment_url)
+    btn_menu = types.InlineKeyboardButton("↩️ В меню", callback_data="main_menu")
+    markup.add(btn_pay, btn_menu)
+
+    text = f"🔮 {shards} осколков за {amount_rub}₽\n\nНажмите «Оплатить» для перехода к оплате."
+
+    bot.send_message(user_id, text, reply_markup=markup)
