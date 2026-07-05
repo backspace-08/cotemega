@@ -397,6 +397,21 @@ def can_press_button(user_id, cooldown_hours=2):
 def get_created_at(user_id):
     query = execute_query("SELECT created_at FROM users WHERE user_id = %s", (user_id,), fetch=True)
     if query and query[0]:
-        timestamp = query[0]  # Получаем datetime объект
-        return timestamp.strftime("%d.%m.%Y")  # Форматируем в DD.MM.YYYY
+        timestamp = query[0]
+        return timestamp.strftime("%d.%m.%Y")
     return None
+
+
+def is_payment_processed(operation_id):
+    result = execute_query(
+        "SELECT 1 FROM processed_payments WHERE operation_id = %s",
+        (operation_id,), fetch=True
+    )
+    return result is not None
+
+
+def mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label):
+    execute_query(
+        "INSERT INTO processed_payments (operation_id, user_id, amount, item_type, item_count, label) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
+        (operation_id, user_id, amount, item_type, item_count, label), commit=True
+    )

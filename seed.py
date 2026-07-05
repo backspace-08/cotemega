@@ -42,6 +42,16 @@ CREATE TABLE IF NOT EXISTS inventory (
     PRIMARY KEY (user_id, char_id)
 );
 
+CREATE TABLE IF NOT EXISTS processed_payments (
+    operation_id TEXT PRIMARY KEY,
+    user_id BIGINT,
+    amount DECIMAL(10,2),
+    item_type TEXT,
+    item_count INTEGER,
+    label TEXT,
+    processed_at TIMESTAMP DEFAULT NOW()
+);
+
 CREATE TABLE IF NOT EXISTS arena_queue (
     user_id BIGINT PRIMARY KEY REFERENCES users(user_id) ON DELETE CASCADE,
     message_id BIGINT,

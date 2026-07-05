@@ -9,7 +9,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 import time
 from flask import Flask, request
-from bd_workers import load_user, execute_query, get_first_name, get_username, plus_shards, plus_spins, plus_super_spins
+from bd_workers import load_user, execute_query, get_first_name, get_username, plus_shards, plus_spins, plus_super_spins, is_payment_processed, mark_payment_processed
 from threading import Lock, Timer
 from collections import defaultdict
 import threading
@@ -136,8 +136,13 @@ def yoomoney_webhook_handler():
 
         logger.info(f"YooMoney webhook: sign OK")
 
+        operation_id = data.get('operation_id', '')
         label = data.get('label', '')
         amount = data.get('amount', '0')
+
+        if operation_id and is_payment_processed(operation_id):
+            logger.info(f"YooMoney webhook: duplicate payment {operation_id}, skipped")
+            return 'OK', 200
 
         if not label:
             logger.warning("YooMoney webhook: empty label")
@@ -165,14 +170,17 @@ def yoomoney_webhook_handler():
         if item_type == 'shards':
             logger.info(f"YooMoney webhook: crediting {item_count} shards to user {user_id}")
             plus_shards(user_id, item_count)
+            mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label)
             bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🔮 {item_count} осколков.")
         elif item_type == 'spins':
             logger.info(f"YooMoney webhook: crediting {item_count} spins to user {user_id}")
             plus_spins(user_id, item_count)
+            mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label)
             bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🎴 {item_count} круток.")
         elif item_type == 'super_spins':
             logger.info(f"YooMoney webhook: crediting {item_count} super spins to user {user_id}")
             plus_super_spins(user_id, item_count)
+            mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label)
             bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🧧 {item_count} супер круток.")
         else:
             logger.warning(f"YooMoney webhook: unknown item type: {item_type}")
