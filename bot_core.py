@@ -15,7 +15,8 @@ from collections import defaultdict
 import threading
 import json
 import hashlib
-from urllib.parse import urlencode
+import hmac
+from urllib.parse import quote
 
 user_locks = defaultdict(Lock)
 delete_messages = {}
@@ -116,22 +117,20 @@ def yoomoney_webhook_handler():
             logger.warning("YooMoney webhook: empty request body")
             return 'Bad Request', 400
 
-        logger.info(f"YooMoney webhook: received data: { {k: v for k, v in data.items() if k != 'sha1_hash'} }")
+        logger.info(f"YooMoney webhook: received data: {data}")
 
-        sha1_hash_received = data.get('sha1_hash', '')
+        sign_received = data.get('sign', '')
         test_notification = data.get('test_notification', 'false')
 
-        params_to_sign = ['notification_type', 'operation_id', 'amount', 'currency', 'datetime', 'sender', 'codepro']
-        param_values = [data.get(k, '') for k in params_to_sign]
-        param_values.append(YOOMONEY_SECRET_KEY)
-        param_values.append(data.get('label', ''))
-        param_string = '&'.join(param_values)
+        params_for_sign = {k: v for k, v in data.items() if k != 'sign'}
+        sorted_params = sorted(params_for_sign.items())
+        param_string = '&'.join(f'{k}={quote(v, safe="")}' for k, v in sorted_params)
 
-        logger.info(f"YooMoney webhook: hash string (secret hidden): {'&'.join(param_values[:7])}&<SECRET>&{param_values[-1]}")
-        sign_expected = hashlib.sha1(param_string.encode('utf-8')).hexdigest()
-        logger.info(f"YooMoney webhook: sha1 received={sha1_hash_received}, expected={sign_expected}")
+        logger.info(f"YooMoney webhook: param string for HMAC: {param_string[:200]}...")
+        sign_expected = hmac.new(YOOMONEY_SECRET_KEY.encode(), param_string.encode(), hashlib.sha256).hexdigest()
+        logger.info(f"YooMoney webhook: sign received={sign_received}, expected={sign_expected}")
 
-        if sign_expected != sha1_hash_received:
+        if sign_expected != sign_received:
             logger.warning(f"YooMoney webhook: invalid sign")
             return 'Forbidden', 403
 
