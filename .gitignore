@@ -4,3 +4,4 @@ __pycache__/
 bot_errors.log
 arena_battles.json
 venv/
+.vscode
