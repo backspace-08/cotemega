@@ -16,20 +16,19 @@ SHARD_MAP = {
 }
 
 def create_lava_invoice(user_id, action, amount_rub):
-    email = f"user_{user_id}@telegram.payment"
+    email = f"user_{user_id}@example.com"
     payload = {
         "email": email,
         "offerId": LAVA_OFFER_ID,
-        "price": amount_rub,
+        "amount": amount_rub,
         "currency": "RUB",
-        "periodicity": "ONE_TIME",
     }
     headers = {
         "X-Api-Key": LAVA_API_KEY,
         "Content-Type": "application/json",
     }
     resp = requests.post(
-        f"{LAVA_API_URL}/api/v2/invoice",
+        f"{LAVA_API_URL}/api/v3/invoice",
         json=payload,
         headers=headers,
         timeout=30,
