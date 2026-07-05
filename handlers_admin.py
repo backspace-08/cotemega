@@ -1,6 +1,6 @@
 from bot_core import bot
 from bot_core import safe_delete_message
-from bot_core import admin_only
+from bot_core import admin_only, admin_quit
 from config import ADMIN_ID
 from bd_workers import plus_shards
 from bd_workers import get_user_id

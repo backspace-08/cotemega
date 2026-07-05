@@ -3,7 +3,7 @@ from bot_core import is_message_old, safe_delete_message, show_main_menu, loc_ra
 from bot_core import get_type_char
 from bot_core import decline_fragments
 from bot_core import spins_type
-from bot_core import get_random_character, weighted_random_choice
+
 from config import RARITY_POINTS, CHARS_IMAGES_DIR, SUPER_SPIN_PROBS, NORMAL_SPIN_PROBS
 from bd_workers import plus_balance, plus_shards, plus_spins, can_press_button
 from bd_workers import get_spins, get_super_spins, save_user_character, minus_spins, minus_super_spins
