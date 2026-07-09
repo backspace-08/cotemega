@@ -27,18 +27,23 @@ WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '9080'))
 
 PRICES = """
 🧾 <b>Информация о донатах</b>
-💵 <b>Цены</b>
-<blockquote>35🔮 - 50₽  0.65$
-80🔮 - 100₽  1.3$
-300🔮 - 300₽  3.85$
-600🔮 - 500₽  6.40$
-1300🔮 - 1000₽  12.75$</blockquote>
+💵 <b>Курс</b>
 
-<b>💳 Способы оплаты</b>
-<blockquote><b> 🌍 Международная оплата</b>
-    Платеж через yoomoney
+<blockquote>
+80🔮 - 100₽  -
+300🔮 - 300₽  -
+600🔮 - 500₽  6.5€
+1300🔮 - 1000₽  13€
+3000🔮 - 2000₽  25€
 </blockquote>
-<b>Чтобы задонатить, выберите нужный товар, выберите способ оплаты и следуйте данным вам инструкциям</b>
+
+💳 Способы оплаты
+<blockquote>🌍 <b>Международная оплата</b>
+Нажмите на €. Оплата через lava
+
+🇷🇺 <b>Оплата в России</b>
+Нажмите на ₽. Оплата через lava
+</blockquote>
 """
 
 NORMAL_SPIN_PROBS = {
@@ -77,7 +82,6 @@ LAVA_API_KEY = os.getenv('LAVA_API_KEY', '')
 LAVA_WEBHOOK_SECRET = os.getenv('LAVA_WEBHOOK_SECRET', '')
 LAVA_OFFER_ID = os.getenv('LAVA_OFFER_ID', '')
 
-YOOMONEY_WALLET = os.getenv('YOOMONEY_WALLET', '')
-YOOMONEY_SECRET_KEY = os.getenv('YOOMONEY_SECRET_KEY', '')
+
 
 os.makedirs(CHARS_IMAGES_DIR, exist_ok=True)

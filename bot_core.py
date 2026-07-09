@@ -4,19 +4,16 @@ from telebot import types
 from datetime import datetime, timedelta
 from config import BOT_TOKEN, ADMIN_ID, WEBHOOK_URL, WEBHOOK_LISTEN, WEBHOOK_PORT, RARITY_DISPLAY
 from config import LAVA_API_KEY, LAVA_WEBHOOK_SECRET, LAVA_OFFER_ID
-from config import YOOMONEY_WALLET, YOOMONEY_SECRET_KEY
 import logging
 from logging.handlers import RotatingFileHandler
 import time
 from flask import Flask, request
-from bd_workers import load_user, execute_query, get_first_name, get_username, plus_shards, plus_spins, plus_super_spins, is_payment_processed, mark_payment_processed
+from bd_workers import load_user, execute_query, get_first_name, get_username, plus_shards, plus_spins, plus_super_spins
 from threading import Lock, Timer
 from collections import defaultdict
 import threading
 import json
 import hashlib
-import hmac
-from urllib.parse import quote
 
 user_locks = defaultdict(Lock)
 delete_messages = {}
@@ -92,6 +89,7 @@ def webhook_handler():
 def health():
     return 'OK', 200
 
+
 @webhook_app.route('/lava_webhook', methods=['POST'])
 def lava_webhook_handler():
     auth_key = request.headers.get('X-Api-Key', '')
@@ -101,97 +99,12 @@ def lava_webhook_handler():
         data = request.json
         if not data:
             return 'Bad Request', 400
-        from handlers_payments import process_lava_webhook
+        from features.donate.webhook import process_lava_webhook
         process_lava_webhook(data)
         return 'OK', 200
     except Exception as e:
         logger.error(f"Lava webhook error: {e}")
         return 'OK', 200
-
-
-@webhook_app.route('/yoomoney_webhook', methods=['POST'])
-def yoomoney_webhook_handler():
-    try:
-        data = request.form.to_dict()
-        if not data:
-            logger.warning("YooMoney webhook: empty request body")
-            return 'Bad Request', 400
-
-        logger.info(f"YooMoney webhook: received data: {data}")
-
-        sign_received = data.get('sign', '')
-        test_notification = data.get('test_notification', 'false')
-
-        params_for_sign = {k: v for k, v in data.items() if k != 'sign'}
-        sorted_params = sorted(params_for_sign.items())
-        param_string = '&'.join(f'{k}={quote(v, safe="")}' for k, v in sorted_params)
-
-        logger.info(f"YooMoney webhook: param string for HMAC: {param_string[:200]}...")
-        sign_expected = hmac.new(YOOMONEY_SECRET_KEY.encode(), param_string.encode(), hashlib.sha256).hexdigest()
-        logger.info(f"YooMoney webhook: sign received={sign_received}, expected={sign_expected}")
-
-        if sign_expected != sign_received:
-            logger.warning(f"YooMoney webhook: invalid sign")
-            return 'Forbidden', 403
-
-        logger.info(f"YooMoney webhook: sign OK")
-
-        operation_id = data.get('operation_id', '')
-        label = data.get('label', '')
-        amount = data.get('amount', '0')
-
-        if operation_id and is_payment_processed(operation_id):
-            logger.info(f"YooMoney webhook: duplicate payment {operation_id}, skipped")
-            return 'OK', 200
-
-        if not label:
-            logger.warning("YooMoney webhook: empty label")
-            return 'OK', 200
-
-        parts = label.split('_')
-        if len(parts) < 3 or parts[0] != 'user':
-            logger.warning(f"YooMoney webhook: bad label format: {label}")
-            return 'OK', 200
-
-        user_id = parts[1]
-        item_type = parts[2]
-        item_count = int(parts[3]) if len(parts) > 3 else 0
-
-        logger.info(f"YooMoney webhook: parsed label -> user_id={user_id}, type={item_type}, count={item_count}")
-
-        if item_count <= 0:
-            logger.warning(f"YooMoney webhook: bad item count in label: {label}")
-            return 'OK', 200
-
-        if test_notification == 'true':
-            logger.info(f"YooMoney test notification received, label={label}")
-            return 'OK', 200
-
-        if item_type == 'shards':
-            logger.info(f"YooMoney webhook: crediting {item_count} shards to user {user_id}")
-            plus_shards(user_id, item_count)
-            mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label)
-            bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🔮 {item_count} осколков.")
-        elif item_type == 'spins':
-            logger.info(f"YooMoney webhook: crediting {item_count} spins to user {user_id}")
-            plus_spins(user_id, item_count)
-            mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label)
-            bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🎴 {item_count} круток.")
-        elif item_type == 'super_spins':
-            logger.info(f"YooMoney webhook: crediting {item_count} super spins to user {user_id}")
-            plus_super_spins(user_id, item_count)
-            mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label)
-            bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🧧 {item_count} супер круток.")
-        else:
-            logger.warning(f"YooMoney webhook: unknown item type: {item_type}")
-            return 'OK', 200
-
-        return 'OK', 200
-
-    except Exception as e:
-        logger.error(f"YooMoney webhook error: {e}")
-        return 'OK', 200
-
 
 
 def run_bot():
