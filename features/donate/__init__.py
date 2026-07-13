@@ -2,7 +2,7 @@ import requests
 from bot_core import bot, logger, pending_lava_payments
 from bot_core import is_message_old, safe_delete_message
 from config import LAVA_API_KEY, LAVA_OFFER_ID
-from bd_workers import plus_shards, mark_payment_processed, is_payment_processed
+from bd_workers import update_currency, mark_payment_processed, is_payment_processed
 from telebot import types
 
 LAVA_API_URL = "https://gate.lava.top"
@@ -45,7 +45,7 @@ def handle_lava_payment(call):
     user_id = str(call.from_user.id)
     parts = call.data.split(':')
     currency = parts[1]
-    amount = int(parts[2])
+    amount = float(parts[2])
     shards = int(parts[3])
     safe_delete_message(bot, call.message.chat.id, call.message.message_id)
 

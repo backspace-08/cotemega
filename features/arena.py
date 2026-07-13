@@ -1,14 +1,13 @@
 from bot_core import bot, logger, user_locks, delete_messages, add_user_message
 from bot_core import is_message_old, safe_delete_message, show_main_menu, loc_rarity
-from bot_core import get_type_char, get_type_equal, get_damage_multiplier, round_damage
+from bot_core import get_type_char
 from bot_core import get_rarity_counts
-from bot_core import get_mmr, get_league, update_mmr
+from bot_core import get_mmr
 from bot_core import get_rewards
-from bot_core import admin_only
 from config import ADMIN_ID
-from bd_workers import get_character_data
+from bd_workers import get_character_data, count_user_characters
 from bd_workers import get_user_characters, get_all_users
-from bd_workers import get_first_name, execute_query, get_top_players_arena
+from bd_workers import get_first_name, execute_query, get_username
 import telebot
 from telebot import types
 import random
@@ -16,6 +15,200 @@ import time
 import html
 from io import BytesIO
 import threading
+from threading import Lock, Timer
+import threading
+
+
+
+processed_matches = set()
+
+pair_history = {}
+battle_locks = {}
+battle_locks_lock = Lock()
+
+
+pick_timers = {}
+pick_timers_lock = threading.Lock()
+
+
+def get_opponent_id(user_id):
+    """Получает ID оппонента из очереди."""
+    result = execute_query(
+        """SELECT opponent_id FROM arena_queue WHERE user_id = %s""",
+        (user_id,),
+        fetch='one'
+    )
+    return result[0] if result else None
+
+def get_type_equal(char1_type, char2_type):
+    """
+    Возвращает множитель урона в зависимости от типов персонажей
+    """
+    # Если один из типов 0, множитель = 1
+    if char1_type == 0 or char2_type == 0:
+        return "="
+    
+    # Определяем множители по парам типов
+    multiplier_map = {
+        (1, 2): ">",
+        (2, 1): "<",
+        (2, 3): ">",
+        (3, 2): "<",
+        (3, 4): ">",
+        (4, 3): "<",
+        (4, 1): ">",
+        (1, 4): "<"
+    }
+    
+    # Возвращаем множитель из словаря или 1.0 по умолчанию
+    return multiplier_map.get((char1_type, char2_type), "=")
+
+
+def get_damage_multiplier(char1_type, char2_type):
+    """
+    Возвращает множитель урона в зависимости от типов персонажей
+    """
+    # Если один из типов 0, множитель = 1
+    if char1_type == 0 or char2_type == 0:
+        return 1.0
+    
+    # Определяем множители по парам типов
+    multiplier_map = {
+        (1, 2): 1.3,
+        (2, 1): 0.7,
+        (2, 3): 1.3,
+        (3, 2): 0.7,
+        (3, 4): 1.3,
+        (4, 3): 0.7,
+        (4, 1): 1.3,
+        (1, 4): 0.7
+    }
+    
+    # Возвращаем множитель из словаря или 1.0 по умолчанию
+    return multiplier_map.get((char1_type, char2_type), 1.0)
+
+
+def round_damage(damage):
+    """
+    Округляет урон до ближайшего числа, кратного 100
+    """
+    return round(damage / 100) * 100
+
+
+def update_mmr(winner_id: int, loser_id: int, is_timeout):
+    # веса редкостей (пример, можно подредактировать)
+    try:
+        rarity_weights = {
+            "common": 1,
+            "rare": 2,
+            "epic": 3,
+            "mythic": 4,
+            "legendary": 5,
+            "special": 5,
+        }
+        winner_mmr= execute_query(f"SELECT mmr FROM users WHERE user_id = %s",(winner_id,),fetch='one')[0]
+        loser_mmr= execute_query(f"SELECT mmr FROM users WHERE user_id = %s",(loser_id,),fetch='one')[0]
+        winner_deck = execute_query(
+            "SELECT deck_1, deck_2, deck_3 FROM arena_queue WHERE user_id = %s",(winner_id,), fetch='one')
+        loser_deck = execute_query("SELECT deck_1, deck_2, deck_3 FROM arena_queue WHERE user_id = %s",(loser_id,), fetch='one')
+        check_and_execute_with_cleanup(winner_id,loser_id,pair_history,required_repeats=5)
+        def get_deck_weight(deck):
+            total = 0
+            for char_id in deck:
+                rarity = execute_query(
+                    "SELECT rarity FROM characters WHERE char_id = %s",
+                    (char_id,), fetch='one'
+                )[0]
+                total += rarity_weights.get(rarity, 1)
+            return total
+        loser_name = get_first_name(loser_id)
+        winner_name = get_first_name(winner_id)
+        winner_weight = get_deck_weight(winner_deck)
+        loser_weight = get_deck_weight(loser_deck)
+        diff = winner_weight - loser_weight
+        mmr_change = 25 - (diff * 5)
+        if mmr_change < 10 and int(winner_mmr) < 1000:
+            mmr_change = 10
+        if mmr_change < 5 and int(winner_mmr) >= 1000:
+            mmr_change = 5
+        if mmr_change > 40:
+            mmr_change = 40
+        if int(loser_mmr)>3500:
+            mmr_loser = 10
+            if is_timeout == True:
+                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\nПротивник не успел выбрать действия\n+{mmr_change} MMR 🏆',parse_mode='HTML')
+                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nВы не успели выбрать действия\nУ вас -{mmr_loser} MMR 🏆\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
+            else:
+                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\n+{mmr_change} MMR 🏆',parse_mode='HTML')
+                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nУ вас -{mmr_loser} MMR 🏆\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
+            execute_query("UPDATE users SET mmr = mmr - %s WHERE user_id = %s",(mmr_loser, loser_id), commit=True)
+            execute_query("UPDATE users SET mmr = mmr + %s WHERE user_id = %s",(mmr_change, winner_id), commit=True)
+        else:
+            if is_timeout == True:
+                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\nПротивник не успел выбрать действия\n+{mmr_change} MMR 🏆',parse_mode='HTML')
+                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nВы не успели выбрать действия\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
+            else:
+                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\n+{mmr_change} MMR 🏆',parse_mode='HTML')
+                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
+            execute_query("UPDATE users SET mmr = mmr + %s WHERE user_id = %s",(mmr_change, winner_id), commit=True)
+    except Exception as e:
+        try:
+            bot.send_message(ADMIN_ID,text=e)
+        except Exception:
+            pass
+
+
+def check_and_execute_with_cleanup(user_id1, user_id2, pair_history, required_repeats=3, max_history_size=1000):
+    """
+    Проверяет, встречалась ли пара игроков required_repeats раз подряд.
+    Если да — вызывает farm_penalty.
+    """
+    # Очистка истории
+    if len(pair_history) > max_history_size:
+        keep_count = max_history_size // 2
+        last_items = dict(list(pair_history.items())[-keep_count:])
+        pair_history.clear()
+        pair_history.update(last_items)
+    pair_key = tuple(sorted([user_id1, user_id2]))
+    current_history = pair_history.get(pair_key, {'last_pair': None, 'count': 0})
+    current_pair = pair_key
+    save_battle_info(user_id1, user_id2)
+    if current_history['last_pair'] != current_pair:
+        # Новая пара — начинаем заново
+        current_history['last_pair'] = current_pair
+        current_history['count'] = 1
+    else:
+        # Та же пара подряд
+        current_history['count'] += 1
+    pair_history[pair_key] = current_history
+
+    if current_history['count'] >= required_repeats:
+        farm_penalty(user_id1, user_id2)
+        current_history['count'] = 1
+        pair_history[pair_key] = current_history
+        return True
+    return False
+
+
+def farm_penalty(user1_id,user2_id):
+    bot.send_message(user1_id,text=f"Подозрительная активность, вы попадались с одним и тем же противником слишком много. Если это использование второго аккаунта или фарм - вы будете наказаны ❌")
+    bot.send_message(user2_id,text=f"Подозрительная активность, вы попадались с одним и тем же противником слишком много. Если это использование второго аккаунта или фарм - вы будете наказаны ❌")
+    bot.send_message(ADMIN_ID,text=f"Подозрительная активность у {user1_id}, @{get_username(user1_id)[0]}, {get_first_name(user1_id)} и\n\n{user2_id}, @{get_username(user2_id)[0]}, {get_first_name(user2_id)}")
+
+
+def save_battle_info(user_id1, user_id2):
+    """Логирует битву в БД"""
+    try:
+        u1 = get_username(user_id1) or get_first_name(user_id1)
+        u2 = get_username(user_id2) or get_first_name(user_id2)
+        execute_query(
+            "INSERT INTO battle_log (user1_id, user2_id, user1_name, user2_name) VALUES (%s, %s, %s, %s)",
+            (user_id1, user_id2, u1, u2), commit=True
+        )
+    except Exception as e:
+        logger.warning(f"Failed to save battle info: {e}")
+
+
 
 @bot.callback_query_handler(func=lambda call: call.data=='arena_menu')
 def arena_menu(call):
@@ -247,12 +440,12 @@ def handle_deck_btn_chars(call):
     number = int(number_str)
     try:
         safe_delete_message(bot, call.message.chat.id, call.message.message_id)
-        user_basic = len(get_user_characters(user_id, rarity='common'))
-        user_rare = len(get_user_characters(user_id, rarity='rare'))
-        user_epic = len(get_user_characters(user_id, rarity='epic'))
-        user_mythic = len(get_user_characters(user_id, rarity='mythic'))
-        user_legendary = len(get_user_characters(user_id, rarity='legendary'))
-        user_special = len(get_user_characters(user_id, rarity='special'))
+        user_basic = count_user_characters(user_id, rarity='common')
+        user_rare = count_user_characters(user_id, rarity='rare')
+        user_epic = count_user_characters(user_id, rarity='epic')
+        user_mythic = count_user_characters(user_id, rarity='mythic')
+        user_legendary = count_user_characters(user_id, rarity='legendary')
+        user_special = count_user_characters(user_id, rarity='special')
         counts = get_rarity_counts()
         markup = types.InlineKeyboardMarkup(row_width=1)
         buttons=[types.InlineKeyboardButton(f"🩶 Обычные {user_basic}/{counts.get('common', 0)}", callback_data=f"pick_chars_basic_{number}"),
@@ -1500,52 +1693,3 @@ def leave_queue(call):
         except Exception as e:
             print(f"Не удалось уведомить противника {opponent_id}: {e}")
     delete_queue_messages([user_id])
-@bot.callback_query_handler(func=lambda call: call.data=='top_mmr')
-def handle_callback_arena_top(call):
-    if is_message_old(call):
-        return
-    сhat_id = call.message.chat.id
-    user_id = str(call.from_user.id)
-    username = call.from_user.username
-    firstname = call.from_user.first_name
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    buttons = [types.InlineKeyboardButton("В меню", callback_data="main_menu")]
-    markup.add(*buttons)
-    safe_delete_message(bot, call.message.chat.id, call.message.message_id)
-    top_func=get_top_players_arena(user_id,10)
-    global_top=top_func['top']
-    top=''
-    for pos,name,mmr in global_top:
-        top=top+f'{pos}. {name} - {get_league(mmr)} <em><b>{mmr} mmr</b></em>\n'
-    user=top_func['user_position']
-    user_page=f"""<b><a href="https://t.me/{username}">{firstname}</a></b>""" if username else f"""<b>{firstname}</b>"""
-    text1=f"""⚡ {user_page}, вот топ по арене сейчас: \n➖➖➖➖➖➖\n"""
-    text=text1 +f'{top}➖➖➖➖➖➖\n⏺️ Твое место - {user["position"]} '
-    bot.send_message(сhat_id,text,reply_markup=markup,parse_mode='HTML',disable_web_page_preview=True )
-    bot.answer_callback_query(call.id)
-@bot.message_handler(commands=['reset_arena'])
-@admin_only
-def handle_arena_reset(message):
-    try:
-        results = []
-        for user in get_all_users():
-            try:
-                league,mmr = get_mmr(user['user_id'])
-                rewards = get_rewards(mmr)
-                spins = rewards["spins"]
-                shards = rewards["shards"]
-                special_text = ", special🤍" if mmr>7999 else ""
-                reward_text=f'Сезон арены окончен!\nMMR - {mmr}\nЛига - {league["name"]}\nНаграды - 🎴 {spins}, 🔮{shards}{special_text}'
-                bot.send_message(chat_id=user['user_id'], text=reward_text)
-                execute_query("UPDATE users SET mmr = 0, spins = spins + %s, shards = shards + %s WHERE user_id = %s", (spins, shards, user['user_id']), commit=True)
-                results.append(True)
-                time.sleep(0.1)
-            except:
-                results.append(False)
-        success = sum(results)
-        bot.send_message(
-            ADMIN_ID,
-            f"✅ Рассылка завершена!\nУспешно: {success}\nНеудачно: {len(results)-success}"
-        )
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Ошибка: {str(e)}")

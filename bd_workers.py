@@ -1,13 +1,14 @@
 import psycopg2
 from psycopg2 import pool
-from config import DB_CONFIG
+from config import DB_CONFIG, CHARS_IMAGES_DIR
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 import logging
 from pytz import UTC
-from datetime import timezone
 from logging.handlers import RotatingFileHandler
-
+from database import get_session
+from models import User, Character, Inventory, ProcessedPayment
+from sqlalchemy import select, func
 
 connection_pool = psycopg2.pool.ThreadedConnectionPool(
     minconn=2,
@@ -24,7 +25,7 @@ logging.basicConfig(
             maxBytes=5*1024*1024,  # 5 MB
             backupCount=3
         ),
-        logging.StreamHandler()  # Вывод в консоль
+        logging.StreamHandler()
     ]
 )
 logger = logging.getLogger(__name__)
@@ -66,352 +67,217 @@ def execute_query(query, params=None, fetch=False, commit=False):
 # Основные функции пользователя
 
 
-def save_first_name(user_id, first_name):
-    execute_query(
-    "UPDATE users SET first_name = %s WHERE user_id = %s",
-        (first_name,user_id),
-        commit=True
-    )
 
 
 def get_first_name(user_id):
-    result = execute_query(
-        "SELECT first_name FROM users WHERE user_id = %s",
-        (user_id,),
-        fetch='one'
-    )
-    return result[0]
+    with get_session() as session:
+        stmt = select(User.first_name).where(User.user_id == user_id)
+        return session.execute(stmt).scalar_one_or_none()
 
 
 def get_username(user_id):
-    result= execute_query(
-        "SELECT username FROM users WHERE user_id = %s",
-        (user_id,),
-        fetch=True
-    )
-    return result
+    with get_session() as session:
+        stmt = select(User.username).where(User.user_id == user_id)
+        return session.execute(stmt).scalar_one_or_none()
 
-def load_user(user_id):
-    return execute_query(
-        "SELECT username, points FROM users WHERE user_id = %s",
-        (user_id,),
-        fetch=True
-    )
+def get_user_data(user_id):
+    with get_session() as session:
+        user = session.get(User, user_id)
+        if not user:
+            return None
+        return {
+            'username': user.username,
+            'first_name': user.first_name,
+            'points': user.points or 0,
+            'spins': user.spins or 0,
+            'super_spins': user.super_spins or 0,
+            'shards': user.shards or 0,
+            'mmr': user.mmr or 0,
+        }
 
-def get_user_id(username):
-    return execute_query(
-        "SELECT user_id FROM users WHERE username = %s",
-        (username,),
-        fetch=True
-    )
 
-def get_verse(user_id):
-    return 'COTE'
+
+def ensure_user(user_id, username=None, first_name=None):
+    with get_session() as session:
+        user = session.get(User, user_id)
+        if not user:
+            user = User(user_id=user_id, username=username, first_name=first_name)
+            session.add(user)
+        else:
+            if username is not None and user.username != username:
+                user.username = username
+            if first_name is not None and user.first_name != first_name:
+                user.first_name = first_name
+
 
 def save_user(user_id, username=None):
-    execute_query(
-        "INSERT INTO users (user_id, username) VALUES (%s, %s) ON CONFLICT (user_id) DO NOTHING",
-        (user_id, username),
-        commit=True
-    )
+    with get_session() as session:
+        user = User(user_id=user_id, username=username)
+        session.merge(user)
 
 def is_user_has_characters(user_id):
-    """Проверяет, есть ли у пользователя хотя бы один персонаж"""
-    result = execute_query(
-        "SELECT 1 FROM inventory WHERE user_id = %s LIMIT 1",
-        (user_id,),
-        fetch=True
-    )
-    return result is not None
+    with get_session() as session:
+        stmt = select(Inventory.user_id).where(Inventory.user_id == user_id).limit(1)
+        return session.execute(stmt).first() is not None
 
 def get_all_users():
-    """Получает всех пользователей из БД PostgreSQL"""
-    users = []
-    try:
-        with get_db_connection() as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("SELECT user_id FROM users")
-                users = [{'user_id': row[0]} for row in cursor.fetchall()]
-    except Exception as e:
-        logger.error(f"Ошибка при получении пользователей: {e}")
-    return users
+    with get_session() as session:
+        rows = session.execute(select(User.user_id)).all()
+        return [{'user_id': row.user_id} for row in rows]
 
 
 # Функции работы с персонажами
-def get_user_characters(user_id, rarity=None):
-    query = """
-        SELECT c.char_name, c.image_path, c.translation, c.rarity 
-        FROM inventory i
-        JOIN characters c ON i.char_id = c.char_id
-        WHERE i.user_id = %s AND c.verse = 'COTE'
-    """
-    params = [user_id]
-    if rarity:
-        query += " AND c.rarity = %s"
-        params.append(str(rarity))
-    results = execute_query(query, params, fetch='all')
-    return {row[0]: {'image': row[1], 'transl': row[2], 'rarity': row[3]} for row in results} if results else {}
-
-
-def save_user_character(user_id, char_path, verse):
-    char_id = execute_query(
-        "SELECT char_id FROM characters WHERE image_path LIKE %s",
-        (f"%/{char_path.name}" if char_path.name else char_path.name,),
-        fetch=True
-    )
-
-    if char_id:
-        execute_query(
-            """INSERT INTO inventory (user_id, char_id)
-            VALUES (%s, %s) ON CONFLICT (user_id, char_id) DO NOTHING""",
-            (user_id, char_id[0]),
-            commit=True
+def count_user_characters(user_id, rarity=None):
+    with get_session() as session:
+        stmt = select(func.count()).select_from(Inventory).join(Character).where(
+            Inventory.user_id == user_id,
         )
+        if rarity:
+            stmt = stmt.where(Character.rarity == rarity)
+        return session.execute(stmt).scalar()
+
+
+def get_user_characters(user_id, rarity=None):
+    with get_session() as session:
+        stmt = (
+            select(Character.char_name, Character.image_path, Character.translation, Character.rarity)
+            .join(Inventory, Inventory.char_id == Character.char_id)
+            .where(Inventory.user_id == user_id)
+        )
+        if rarity:
+            stmt = stmt.where(Character.rarity == str(rarity))
+        rows = session.execute(stmt).all()
+        return {r.char_name: {'image': str(CHARS_IMAGES_DIR / r.image_path), 'transl': r.translation, 'rarity': r.rarity} for r in rows}
+
+
+def save_user_character(user_id, char_path):
+    with get_session() as session:
+        char_id = session.execute(
+            select(Character.char_id).where(Character.image_path.like(f"%/{char_path.name}"))
+        ).scalar_one_or_none()
+
+        if char_id:
+            session.merge(Inventory(user_id=user_id, char_id=char_id))
 
 # Функции работы с валютами
 def update_currency(user_id, column, amount):
-    """Обновляет значение валюты с защитой от отрицательных значений"""
-    if column in ['spins', 'super_spins', 'shards']:  # Защищаем только важные поля
-        current_value = execute_query(
-            f"SELECT {column} FROM users WHERE user_id = %s",
-            (user_id,),
-            fetch='one'
-        )
-        
-        if current_value:
-            current_value = current_value[0] if isinstance(current_value, tuple) else current_value
-            new_value = (current_value or 0) + amount
-            if new_value < 0:
-                new_value = 0
-            
-            execute_query(
-                f"UPDATE users SET {column} = %s WHERE user_id = %s",
-                (new_value, user_id),
-                commit=True
-            )
-    else:
-        # Для других полей без защиты
-        execute_query(
-            f"UPDATE users SET {column} = {column} + %s WHERE user_id = %s",
-            (amount, user_id),
-            commit=True
-        )
+    with get_session() as session:
+        user = session.get(User, user_id)
+        if not user:
+            return
+        current = getattr(user, column) or 0
+        new_value = current + amount
+        if column in ('spins', 'super_spins', 'shards') and new_value < 0:
+            new_value = 0
+        setattr(user, column, new_value)
 
 def get_currency(user_id, column):
-    result = execute_query(
-        f"SELECT {column} FROM users WHERE user_id = %s",
-        (user_id,),
-        fetch=True
-    )
-    return result[0] if result else 0
-
-# Обертки для конкретных валют
-def plus_spins(user_id, spins_plus=1): update_currency(user_id, 'spins', spins_plus)
-def minus_super_spins(user_id, super_spins_minus=1): update_currency(user_id, 'super_spins', -super_spins_minus)
-def get_spins(user_id): return get_currency(user_id, 'spins')
-
-def plus_super_spins(user_id, super_spins_plus=1): update_currency(user_id, 'super_spins', super_spins_plus)
-def get_super_spins(user_id): return get_currency(user_id, 'super_spins')
-
-def plus_shards(user_id, shards_plus): update_currency(user_id, 'shards', shards_plus)
-def new_shards_db(user_id, new_shards): update_currency(user_id, 'shards', new_shards - get_currency(user_id, 'shards'))
-def get_shards(user_id): return get_currency(user_id, 'shards')
-
-def plus_balance(user_id, amount_to_add): update_currency(user_id, 'points', amount_to_add)
-
-def minus_spins(user_id, spins_minus=1):
-    """Уменьшает количество круток с проверкой"""
-    current_spins = get_spins(user_id)
-    # Проверяем, достаточно ли круток
-    if current_spins >= spins_minus:
-        update_currency(user_id, 'spins', -spins_minus)
-        return True
-    else:
-        print(f"Попытка использовать {spins_minus} круток при наличии {current_spins} юзером {user_id}")
-        return False
-# Дополнительные функции
-def load_character(char_name):
-    return execute_query(
-        "SELECT * FROM characters WHERE char_name = %s",
-        (char_name,),
-        fetch=True
-    )
-
-
+    with get_session() as session:
+        stmt = select(getattr(User, column)).where(User.user_id == user_id)
+        return session.execute(stmt).scalar() or 0
 
 def get_character_data(page, user_id, rarity):
-    query = """
-        SELECT c.char_name, c.image_path, c.translation, c.rarity,c.char_id,c.type,c.health,c.attack
-        FROM inventory i
-        JOIN characters c ON i.char_id = c.char_id
-        WHERE i.user_id = %s AND c.rarity = %s AND c.verse = 'COTE'
-        ORDER BY c.char_name
-        LIMIT 1 OFFSET %s
-    """
-    result = execute_query(query, (user_id, str(rarity), page), fetch=True)
-    if not result:
-        return None, None
-    char_name, image_path, translation, rarity, char_id, ctype, health, attack = result
-    return char_name, {
-        'image': image_path,
-        'transl': translation,
-        'rarity': rarity,
-        'char_id': char_id,
-        'type': ctype,
-        'health': health,
-        'attack': attack,
-    }
-
-
-
-
-
-def get_top_players(user_id=None, limit=10):
-    """
-    Возвращает топ игроков и (опционально) позицию конкретного пользователя.
-    Использует first_name, если он есть, иначе username.
-    
-    :param user_id: ID пользователя для получения его позиции (None если не нужно)
-    :param limit: количество игроков в топе
-    :return: {'top': [...], 'user_position': {...}} или {'top': [...]}
-    """
-    query = """
-        WITH ranked_users AS (
-            SELECT 
-                user_id,
-                COALESCE(NULLIF(first_name, ''), username) AS display_name,
-                points,
-                ROW_NUMBER() OVER (ORDER BY points DESC) AS position
-            FROM users
+    with get_session() as session:
+        stmt = (
+            select(
+                Character.char_name, Character.image_path, Character.translation,
+                Character.rarity, Character.char_id, Character.type,
+                Character.health, Character.attack,
+            )
+            .join(Inventory, Inventory.char_id == Character.char_id)
+            .where(Inventory.user_id == user_id, Character.rarity == str(rarity))
+            .order_by(Character.char_name)
+            .offset(page)
+            .limit(1)
         )
-        SELECT 
-            position,
-            display_name, 
-            points
-        FROM ranked_users
-        WHERE position <= %s
-        ORDER BY position
-    """
-    result = {'top': execute_query(query, (limit,), fetch='all')}
-    if user_id is not None:
-        user_query = """
-            SELECT 
-                position, 
-                COALESCE(NULLIF(first_name, ''), username) AS display_name,
-                points
-            FROM (
-                SELECT 
-                    user_id,
-                    first_name,
-                    username,
-                    points,
-                    ROW_NUMBER() OVER (ORDER BY points DESC) AS position
-                FROM users
-            ) AS ranked
-            WHERE user_id = %s
-        """
-        user_data = execute_query(user_query, (user_id,), fetch='one')
-        if user_data:
-            result['user_position'] = {
-                'position': user_data[0],
-                'name': user_data[1],  # Используем display_name (first_name или username)
-                'points': user_data[2]
-            }
-    return result
+        row = session.execute(stmt).first()
+        if not row:
+            return None, None
+        return row.char_name, {
+            'image': str(CHARS_IMAGES_DIR / row.image_path),
+            'transl': row.translation,
+            'rarity': row.rarity,
+            'char_id': row.char_id,
+            'type': row.type,
+            'health': row.health,
+            'attack': row.attack,
+        }
 
 
 
-def get_top_players_arena(user_id=None, limit=10):
-    """
-    Возвращает топ игроков АРЕНЫ и (опционально) позицию конкретного пользователя.
-    Использует first_name, если он есть, иначе username.
-    
-    :param user_id: ID пользователя для получения его позиции (None если не нужно)
-    :param limit: количество игроков в топе
-    :return: {'top': [...], 'user_position': {...}} или {'top': [...]}
-    """
-    query = """
-        WITH ranked_users AS (
-            SELECT 
-                user_id,
-                COALESCE(NULLIF(first_name, ''), username) AS display_name,
-                mmr,
-                ROW_NUMBER() OVER (ORDER BY mmr DESC) AS position
-            FROM users
+
+
+def get_top_players(user_id=None, limit=10, order_col='points'):
+    col = getattr(User, order_col)
+    with get_session() as session:
+        ranked = (
+            select(
+                User.user_id,
+                func.coalesce(func.nullif(User.first_name, ''), User.username).label('name'),
+                col.label('value'),
+                func.row_number().over(order_by=col.desc()).label('pos'),
+            ).subquery()
         )
-        SELECT 
-            position,
-            display_name, 
-            mmr
-        FROM ranked_users
-        WHERE position <= %s
-        ORDER BY position
-    """
-    result = {'top': execute_query(query, (limit,), fetch='all')}
-    if user_id is not None:
-        user_query = """
-            SELECT 
-                position, 
-                COALESCE(NULLIF(first_name, ''), username) AS display_name,
-                mmr
-            FROM (
-                SELECT 
-                    user_id,
-                    first_name,
-                    username,
-                    mmr,
-                    ROW_NUMBER() OVER (ORDER BY mmr DESC) AS position
-                FROM users
-            ) AS ranked
-            WHERE user_id = %s
-        """
-        user_data = execute_query(user_query, (user_id,), fetch='one')
-        if user_data:
-            result['user_position'] = {
-                'position': user_data[0],
-                'name': user_data[1],  # Используем display_name (first_name или username)
-                'mmr': user_data[2]
-            }
-    return result
+
+        top = session.execute(
+            select(ranked.c.pos, ranked.c.name, ranked.c.value)
+            .where(ranked.c.pos <= limit)
+            .order_by(ranked.c.pos)
+        ).all()
+
+        result = {'top': [(r.pos, r.name, r.value) for r in top]}
+
+        if user_id is not None:
+            row = session.execute(
+                select(ranked.c.pos, ranked.c.name, ranked.c.value)
+                .where(ranked.c.user_id == user_id)
+            ).first()
+            if row:
+                result['user_position'] = {
+                    'position': row.pos,
+                    'name': row.name,
+                    'points': row.value,
+                }
+
+        return result
 
 
 def can_press_button(user_id, cooldown_hours=2):
-    result = execute_query("""
-        SELECT last_button_press 
-        FROM users 
-        WHERE user_id = %s
-    """, (user_id,), fetch=True)
-    if not result or not result[0]:
-        return True, None
-    last_press = result[0]
-    if last_press.tzinfo is None:
-        last_press = last_press.replace(tzinfo=UTC)
-    next_press_time = last_press + timedelta(hours=cooldown_hours)
-    current_time = datetime.now(UTC)
-    if current_time >= next_press_time:
-        return True, None
-    remaining_time = next_press_time - current_time
-    return False, remaining_time
+    with get_session() as session:
+        user = session.get(User, user_id)
+        if not user or not user.last_button_press:
+            return True, None
+        last_press = user.last_button_press
+        if last_press.tzinfo is None:
+            last_press = last_press.replace(tzinfo=UTC)
+        next_press_time = last_press + timedelta(hours=cooldown_hours)
+        current_time = datetime.now(UTC)
+        if current_time >= next_press_time:
+            return True, None
+        remaining_time = next_press_time - current_time
+        return False, remaining_time
 
 
 def get_created_at(user_id):
-    query = execute_query("SELECT created_at FROM users WHERE user_id = %s", (user_id,), fetch=True)
-    if query and query[0]:
-        timestamp = query[0]
-        return timestamp.strftime("%d.%m.%Y")
-    return None
+    with get_session() as session:
+        user = session.get(User, user_id)
+        if user and user.created_at:
+            return user.created_at.strftime("%d.%m.%Y")
+        return None
 
 
 def is_payment_processed(operation_id):
-    result = execute_query(
-        "SELECT 1 FROM processed_payments WHERE operation_id = %s",
-        (operation_id,), fetch=True
-    )
-    return result is not None
+    with get_session() as session:
+        return session.get(ProcessedPayment, operation_id) is not None
 
 
 def mark_payment_processed(operation_id, user_id, amount, item_type, item_count, label):
-    execute_query(
-        "INSERT INTO processed_payments (operation_id, user_id, amount, item_type, item_count, label) VALUES (%s, %s, %s, %s, %s, %s) ON CONFLICT DO NOTHING",
-        (operation_id, user_id, amount, item_type, item_count, label), commit=True
-    )
+    with get_session() as session:
+        session.merge(ProcessedPayment(
+            operation_id=operation_id,
+            user_id=user_id,
+            amount=amount,
+            item_type=item_type,
+            item_count=item_count,
+            label=label,
+        ))

@@ -3,22 +3,29 @@ import telebot
 from telebot import types
 from datetime import datetime, timedelta
 from config import BOT_TOKEN, ADMIN_ID, WEBHOOK_URL, WEBHOOK_LISTEN, WEBHOOK_PORT, RARITY_DISPLAY
-from config import LAVA_API_KEY, LAVA_WEBHOOK_SECRET, LAVA_OFFER_ID
+from config import LAVA_API_KEY, LAVA_WEBHOOK_SECRET, LAVA_OFFER_ID, LAVA_WH_URL
 import logging
 from logging.handlers import RotatingFileHandler
 import time
 from flask import Flask, request
-from bd_workers import load_user, execute_query, get_first_name, get_username, plus_shards, plus_spins, plus_super_spins
+from bd_workers import execute_query,  ensure_user, get_user_data
 from threading import Lock, Timer
 from collections import defaultdict
 import threading
-import json
-import hashlib
 
 user_locks = defaultdict(Lock)
 delete_messages = {}
-pair_history = {}
 pending_lava_payments = {}
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+def resolve_user(obj):
+    user_id = obj.from_user.id
+    chat_id = obj.message.chat.id if hasattr(obj, 'message') else obj.chat.id
+    username = obj.from_user.username
+    first_name = obj.from_user.first_name
+    ensure_user(user_id, username, first_name)
+    return user_id, chat_id, username
 
 
 def add_user_message(user_id, message_id):
@@ -49,29 +56,6 @@ logger.addHandler(file_handler)
 logger.addHandler(stream_handler)
 
 
-def spins_type(spins_data):
-    if isinstance(spins_data, tuple):
-        spins = int(spins_data[0]) if spins_data else 0
-    elif spins_data is None:  
-        spins = 0
-    else: 
-        spins = int(spins_data)
-    return spins
-
-def fix_negative_super_spins(user_id):
-    execute_query("""
-        UPDATE users 
-        SET super_spins = GREATEST(0, super_spins)
-        WHERE user_id = %s
-    """, (user_id,), commit=True)  
-
-
-def fix_negative_spins(user_id):
-    execute_query("""
-        UPDATE users 
-        SET spins = GREATEST(0, spins)
-        WHERE user_id = %s
-    """, (user_id,), commit=True)
 
 
 webhook_app = Flask(__name__)
@@ -90,8 +74,20 @@ def health():
     return 'OK', 200
 
 
-@webhook_app.route('/lava_webhook', methods=['POST'])
+@webhook_app.route('/lava_webhook', methods=['GET', 'POST'])
 def lava_webhook_handler():
+    if request.method == 'GET':
+        return f"""<!DOCTYPE html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Lava Webhook</title></head>
+<body style="font-family:sans-serif;padding:2em">
+<h1>Lava Webhook</h1>
+<p>Бот: <b>{BOT_TOKEN[:8]}...</b></p>
+<p>Webhook URL: <b>{LAVA_WH_URL}</b></p>
+<p>Статус: <span style="color:green">✓ активен</span></p>
+</body>
+</html>""", 200, {'Content-Type': 'text/html; charset=utf-8'}
+
     auth_key = request.headers.get('X-Api-Key', '')
     if auth_key != LAVA_WEBHOOK_SECRET:
         return 'Forbidden', 403
@@ -145,10 +141,6 @@ def decline_spins(count):
         return f"круток"
 
 
-def exchange_menu_text(spins,shards,super_spins):
-    exchange_menu_text=f"🎴Количество круток: {spins}\n🔮Количество осколков: {shards}\n🧧Количество супер круток: {super_spins}\n🔄Обменный курс: \n🎴1=🔮10\n🧧1=🔮80\nСупер крутки - крутки, в которых гарантирован минимум эпический персонаж. Шанс на легендарного персонажа выше в 10 раз"
-    return exchange_menu_text
-
 
 def is_message_old(call):
     try:
@@ -183,9 +175,9 @@ def safe_delete_message(bot, chat_id, message_id):
 
 
 def show_main_menu(chat_id, user_id, username, message_id=None):
-    user_data = load_user(user_id)
-    points = user_data[1] if user_data else 0
-    first_name = get_first_name(user_id) or username
+    data = get_user_data(user_id) or {}
+    points = data.get('points', 0)
+    first_name = data.get('first_name') or username
     markup = types.InlineKeyboardMarkup(row_width=2)
     buttons = [
         types.InlineKeyboardButton("🏆 Топ", callback_data="top"),
@@ -204,138 +196,6 @@ def show_main_menu(chat_id, user_id, username, message_id=None):
         reply_markup=markup
     )
 
-
-def exchange_menu():
-    markup = types.InlineKeyboardMarkup(row_width=2)
-    buttons = [
-        types.InlineKeyboardButton("10🔮 на 1🎴", callback_data="ex_num:spins:1"),
-        types.InlineKeyboardButton("80🔮 на 1🧧", callback_data="ex_num:super_spins:1"),
-        types.InlineKeyboardButton("50🔮 на 5🎴", callback_data="ex_num:spins:5"),
-        types.InlineKeyboardButton("400🔮 на 5🧧", callback_data="ex_num:super_spins:5"),
-        types.InlineKeyboardButton("100🔮 на 10🎴 ", callback_data="ex_num:spins:10"),
-        types.InlineKeyboardButton("800🔮 на 10🧧 ", callback_data="ex_num:super_spins:10"),
-        types.InlineKeyboardButton("все🔮 на 🎴", callback_data="ex_all:spins"),
-        types.InlineKeyboardButton("все🔮 на 🧧", callback_data="ex_all:super_spins")
-    ]
-    markup.add(*buttons)
-    # big_btn1 = types.InlineKeyboardButton("Большая кнопка 1", callback_data="big_btn1")
-    big_btn2 = types.InlineKeyboardButton("В меню", callback_data="main_menu")
-    # markup.add(big_btn1)
-    markup.add(big_btn2)
-    return markup
-
-def update_mmr(winner_id: int, loser_id: int, is_timeout):
-    # веса редкостей (пример, можно подредактировать)
-    try:
-        rarity_weights = {
-            "common": 1,
-            "rare": 2,
-            "epic": 3,
-            "mythic": 4,
-            "legendary": 5,
-            "special": 5,
-        }
-        winner_mmr= execute_query(f"SELECT mmr FROM users WHERE user_id = %s",(winner_id,),fetch='one')[0]
-        loser_mmr= execute_query(f"SELECT mmr FROM users WHERE user_id = %s",(loser_id,),fetch='one')[0]
-        winner_deck = execute_query(
-            "SELECT deck_1, deck_2, deck_3 FROM arena_queue WHERE user_id = %s",(winner_id,), fetch='one')
-        loser_deck = execute_query("SELECT deck_1, deck_2, deck_3 FROM arena_queue WHERE user_id = %s",(loser_id,), fetch='one')
-        check_and_execute_with_cleanup(winner_id,loser_id,pair_history,required_repeats=5)
-        def get_deck_weight(deck):
-            total = 0
-            for char_id in deck:
-                rarity = execute_query(
-                    "SELECT rarity FROM characters WHERE char_id = %s",
-                    (char_id,), fetch='one'
-                )[0]
-                total += rarity_weights.get(rarity, 1)
-            return total
-        loser_name = get_first_name(loser_id)
-        winner_name = get_first_name(winner_id)
-        winner_weight = get_deck_weight(winner_deck)
-        loser_weight = get_deck_weight(loser_deck)
-        diff = winner_weight - loser_weight
-        mmr_change = 25 - (diff * 5)
-        if mmr_change < 10 and int(winner_mmr) < 1000:
-            mmr_change = 10
-        if mmr_change < 5 and int(winner_mmr) >= 1000:
-            mmr_change = 5
-        if mmr_change > 40:
-            mmr_change = 40
-        if int(loser_mmr)>3500:
-            mmr_loser = 10
-            if is_timeout == True:
-                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\nПротивник не успел выбрать действия\n+{mmr_change} MMR 🏆',parse_mode='HTML')
-                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nВы не успели выбрать действия\nУ вас -{mmr_loser} MMR 🏆\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
-            else:
-                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\n+{mmr_change} MMR 🏆',parse_mode='HTML')
-                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nУ вас -{mmr_loser} MMR 🏆\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
-            execute_query("UPDATE users SET mmr = mmr - %s WHERE user_id = %s",(mmr_loser, loser_id), commit=True)
-            execute_query("UPDATE users SET mmr = mmr + %s WHERE user_id = %s",(mmr_change, winner_id), commit=True)
-        else:
-            if is_timeout == True:
-                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\nПротивник не успел выбрать действия\n+{mmr_change} MMR 🏆',parse_mode='HTML')
-                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nВы не успели выбрать действия\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
-            else:
-                bot.send_message(winner_id,text=f'Вы победили <b>{loser_name}</b>!\n+{mmr_change} MMR 🏆',parse_mode='HTML')
-                bot.send_message(loser_id,text=f'Вы проиграли <b>{winner_name}</b>!\nПротивнику +{mmr_change} MMR 🏆',parse_mode='HTML')
-            execute_query("UPDATE users SET mmr = mmr + %s WHERE user_id = %s",(mmr_change, winner_id), commit=True)
-    except Exception as e:
-        try:
-            bot.send_message(ADMIN_ID,text=e)
-        except Exception:
-            pass
-
-
-def check_and_execute_with_cleanup(user_id1, user_id2, pair_history, required_repeats=3, max_history_size=1000):
-    """
-    Проверяет, встречалась ли пара игроков required_repeats раз подряд.
-    Если да — вызывает farm_penalty.
-    """
-    # Очистка истории
-    if len(pair_history) > max_history_size:
-        keep_count = max_history_size // 2
-        last_items = dict(list(pair_history.items())[-keep_count:])
-        pair_history.clear()
-        pair_history.update(last_items)
-    pair_key = tuple(sorted([user_id1, user_id2]))
-    current_history = pair_history.get(pair_key, {'last_pair': None, 'count': 0})
-    current_pair = pair_key
-    save_battle_info(user_id1, user_id2)
-    if current_history['last_pair'] != current_pair:
-        # Новая пара — начинаем заново
-        current_history['last_pair'] = current_pair
-        current_history['count'] = 1
-    else:
-        # Та же пара подряд
-        current_history['count'] += 1
-    pair_history[pair_key] = current_history
-
-    if current_history['count'] >= required_repeats:
-        farm_penalty(user_id1, user_id2)
-        current_history['count'] = 1
-        pair_history[pair_key] = current_history
-        return True
-    return False
-
-
-def farm_penalty(user1_id,user2_id):
-    bot.send_message(user1_id,text=f"Подозрительная активность, вы попадались с одним и тем же противником слишком много. Если это использование второго аккаунта или фарм - вы будете наказаны ❌")
-    bot.send_message(user2_id,text=f"Подозрительная активность, вы попадались с одним и тем же противником слишком много. Если это использование второго аккаунта или фарм - вы будете наказаны ❌")
-    bot.send_message(ADMIN_ID,text=f"Подозрительная активность у {user1_id}, @{get_username(user1_id)[0]}, {get_first_name(user1_id)} и\n\n{user2_id}, @{get_username(user2_id)[0]}, {get_first_name(user2_id)}")
-
-
-def save_battle_info(user_id1, user_id2):
-    """Логирует битву в БД"""
-    try:
-        u1 = get_username(user_id1) or get_first_name(user_id1)
-        u2 = get_username(user_id2) or get_first_name(user_id2)
-        execute_query(
-            "INSERT INTO battle_log (user1_id, user2_id, user1_name, user2_name) VALUES (%s, %s, %s, %s)",
-            (user_id1, user_id2, u1, u2), commit=True
-        )
-    except Exception as e:
-        logger.warning(f"Failed to save battle info: {e}")
 
 
 def get_mmr(user_id_any):
@@ -385,7 +245,7 @@ def get_mmr(user_id_any):
         {
             "name": "🕸Абсолют",
             "min_mmr": 8000,
-            "max_mmr": float('inf'),  # Без верхней границы
+            "max_mmr": float('inf'),
         }
     ]
     for league in leagues:
@@ -398,7 +258,7 @@ def get_mmr(user_id_any):
     },mmr
 
 
-bot = telebot.TeleBot(BOT_TOKEN)
+
 
 
 def loc_rarity(r):
@@ -416,110 +276,6 @@ def get_type_char(type):
     return types_emojis.get(type)
 
 
-def get_opponent_id(user_id):
-    """Получает ID оппонента из очереди."""
-    result = execute_query(
-        """SELECT opponent_id FROM arena_queue WHERE user_id = %s""",
-        (user_id,),
-        fetch='one'
-    )
-    return result[0] if result else None
-
-
-processed_matches = set()
-
-
-battle_locks = {}
-battle_locks_lock = Lock()
-
-
-pick_timers = {}
-pick_timers_lock = threading.Lock()
-
-
-def get_type_equal(char1_type, char2_type):
-    """
-    Возвращает множитель урона в зависимости от типов персонажей
-    """
-    # Если один из типов 0, множитель = 1
-    if char1_type == 0 or char2_type == 0:
-        return "="
-    
-    # Определяем множители по парам типов
-    multiplier_map = {
-        (1, 2): ">",
-        (2, 1): "<",
-        (2, 3): ">",
-        (3, 2): "<",
-        (3, 4): ">",
-        (4, 3): "<",
-        (4, 1): ">",
-        (1, 4): "<"
-    }
-    
-    # Возвращаем множитель из словаря или 1.0 по умолчанию
-    return multiplier_map.get((char1_type, char2_type), "=")
-
-
-def get_damage_multiplier(char1_type, char2_type):
-    """
-    Возвращает множитель урона в зависимости от типов персонажей
-    """
-    # Если один из типов 0, множитель = 1
-    if char1_type == 0 or char2_type == 0:
-        return 1.0
-    
-    # Определяем множители по парам типов
-    multiplier_map = {
-        (1, 2): 1.3,
-        (2, 1): 0.7,
-        (2, 3): 1.3,
-        (3, 2): 0.7,
-        (3, 4): 1.3,
-        (4, 3): 0.7,
-        (4, 1): 1.3,
-        (1, 4): 0.7
-    }
-    
-    # Возвращаем множитель из словаря или 1.0 по умолчанию
-    return multiplier_map.get((char1_type, char2_type), 1.0)
-
-
-def round_damage(damage):
-    """
-    Округляет урон до ближайшего числа, кратного 100
-    """
-    return round(damage / 100) * 100
-
-
-def get_rarity_emoji(rarity):
-    rarity_emojis = {
-        'common': '🩶',
-        'rare': '💙',
-        'epic': '💜',
-        'mythic': '❤️',
-        'legendary': '💛',
-        'special': '🤍',
-    }
-    return rarity_emojis.get(rarity.lower(), '')
-
-# Функция для форматирования персонажей с эмодзи редкости
-def format_chars(chars):
-    formatted = []
-    for char in chars:
-        # Получаем редкость персонажа
-        rarity_row = execute_query(
-            "SELECT rarity FROM characters WHERE translation = %s AND rarity != 'special'",
-            (char,),
-            fetch='one')
-        rarity = rarity_row[0] if rarity_row else 'common'
-        emoji = get_rarity_emoji(rarity)
-        formatted.append(f"{emoji} {char}")
-    return "\n".join(formatted) if formatted else "Нет персонажей"
-
-
-
-
 
 def clean_locks_every_hour():
     for user_id in list(user_locks.keys()):
@@ -530,14 +286,11 @@ def clean_locks_every_hour():
 clean_locks_every_hour()
 
 
-TEMS_PER_PAGE = 1
-
 
 def get_rarity_counts() -> dict:
     query = """
     SELECT rarity, COUNT(*)
     FROM characters
-    WHERE verse = 'COTE'
     GROUP BY rarity
     """
     result = execute_query(query, fetch='all')
@@ -595,23 +348,6 @@ def get_league(mmr):
     for league in leagues:
         if league["min_mmr"] <= mmr <= league["max_mmr"]:
             return league['name']
-
-
-def admin_only(func):
-    """Декоратор для проверки прав администратора"""
-    def wrapper(message):
-        if message.from_user.id != ADMIN_ID:
-            bot.reply_to(message, "⛔ У вас нет прав на эту команду")
-            return
-        return func(message)
-    return wrapper
-
-
-def admin_quit(message):
-    msg = message.lower()
-    if msg == 'quit':
-        bot.send_message(ADMIN_ID,text='Выход из команды')
-        return True
 
 
 def get_rewards(mmr):

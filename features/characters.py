@@ -1,36 +1,41 @@
-from bot_core import bot, logger
+from pathlib import Path
+from bot_core import bot, resolve_user, logger
 from bot_core import is_message_old, safe_delete_message, loc_rarity
 from bot_core import get_type_char
 from bot_core import get_rarity_counts
-from bd_workers import get_character_data
+from bd_workers import get_character_data, count_user_characters
 from bd_workers import get_user_characters
 import telebot
 from telebot import types
+
+ANIMATED_EXTENSIONS = {'.mp4', '.gif', '.webm'}
+
+ANIMATED_EXTENSIONS = {'.mp4', '.gif', '.webm'}
 
 def handle_view_chars(call, rarity):
     if is_message_old(call):
         return
     try:
-        user_id = call.from_user.id
+        user_id, chat_id, username = resolve_user(call)
         markup, caption, image_path = generate_character_keyboard(user_id, rarity)
         if markup is None:
             bot.answer_callback_query(call.id, caption)
             return
-        if rarity == 'legendary':
+        if Path(image_path).suffix.lower() in ANIMATED_EXTENSIONS:
             with open(image_path, 'rb') as file:
                 bot.send_animation(
-                    chat_id=call.message.chat.id,
+                    chat_id=chat_id,
                     animation=file,
                     caption=caption, parse_mode='HTML',
                     reply_markup=markup)
         else:
             with open(image_path, 'rb') as photo:
                 bot.send_photo(
-                    chat_id=call.message.chat.id,
+                    chat_id=chat_id,
                     photo=photo,
                     caption=caption, parse_mode='HTML',
                     reply_markup=markup)
-        safe_delete_message(bot, call.message.chat.id, call.message.message_id)
+        safe_delete_message(bot, chat_id, call.message.message_id)
     except ValueError:
         chat_id = call.message.chat.id
         bot.send_message(chat_id, 'У вас нет персонажей этой редкости')
@@ -72,6 +77,8 @@ def generate_character_keyboard(user_id, rarity, page=0):
         return markup, caption, image_path
 @bot.callback_query_handler(func=lambda call: call.data.startswith('view_chars_'))
 def handle_view_chars_by_rarity(call):
+    if is_message_old(call):
+        return
     view, chars, action = call.data.split('_')
     rarity = {
         'basic': 'common',
@@ -86,15 +93,14 @@ def handle_view_chars_by_rarity(call):
 def handle_view_chars_rarities(call):
     if is_message_old(call):
         return
-    сhat_id = call.message.chat.id
-    user_id = str(call.from_user.id)
-    safe_delete_message(bot, call.message.chat.id, call.message.message_id)
-    user_basic = len(get_user_characters(user_id, rarity='common'))
-    user_rare = len(get_user_characters(user_id, rarity='rare'))
-    user_epic = len(get_user_characters(user_id, rarity='epic'))
-    user_mythic = len(get_user_characters(user_id, rarity='mythic'))
-    user_legendary = len(get_user_characters(user_id, rarity='legendary'))
-    user_special = len(get_user_characters(user_id, rarity='special'))
+    user_id, chat_id, username = resolve_user(call)
+    safe_delete_message(bot, chat_id, call.message.message_id)
+    user_basic = count_user_characters(user_id, rarity='common')
+    user_rare = count_user_characters(user_id, rarity='rare')
+    user_epic = count_user_characters(user_id, rarity='epic')
+    user_mythic = count_user_characters(user_id, rarity='mythic')
+    user_legendary = count_user_characters(user_id, rarity='legendary')
+    user_special = count_user_characters(user_id, rarity='special')
     counts = get_rarity_counts()
     markup=types.InlineKeyboardMarkup(row_width=1)
     buttons=[types.InlineKeyboardButton(f"🩶 Обычные {user_basic}/{counts.get('common', 0)}", callback_data="view_chars_basic"),
@@ -109,11 +115,11 @@ def handle_view_chars_rarities(call):
         buttons_to_show = buttons[:-2] + [buttons[-1]]
         for btn in buttons_to_show:
             markup.add(btn)
-        bot.send_message(сhat_id,f'Выберите редкость:',reply_markup=markup)
+        bot.send_message(chat_id,f'Выберите редкость:',reply_markup=markup)
         bot.answer_callback_query(call.id)
     else:
         markup.add(*buttons)
-        bot.send_message(сhat_id,f'Выберите редкость:',reply_markup=markup)
+        bot.send_message(chat_id,f'Выберите редкость:',reply_markup=markup)
         bot.answer_callback_query(call.id)
 @bot.callback_query_handler(func=lambda call: call.data.startswith('charpage_'))
 def handle_view_charpage(call):
@@ -125,18 +131,19 @@ def handle_view_charpage(call):
             raise ValueError("Некорректный формат callback_data")
         _, rarity, page_str = parts
         page = int(page_str)
-        markup, caption, image_path = generate_character_keyboard(call.from_user.id, rarity, page)
-        if rarity == 'legendary':
+        user_id, chat_id, username = resolve_user(call)
+        markup, caption, image_path = generate_character_keyboard(user_id, rarity, page)
+        if Path(image_path).suffix.lower() in ANIMATED_EXTENSIONS:
             with open(image_path, 'rb') as file:
                 bot.edit_message_media(
-                    chat_id=call.message.chat.id,
+                    chat_id=chat_id,
                     message_id=call.message.message_id,
-                    media=types.InputMediaAnimation(file, caption=caption, parse_mode='HTML'),
+                    media=types.InputMediaVideo(file, caption=caption, parse_mode='HTML'),
                     reply_markup=markup)
         else:
             with open(image_path, 'rb') as photo:
                 bot.edit_message_media(
-                    chat_id=call.message.chat.id,
+                    chat_id=chat_id,
                     message_id=call.message.message_id,
                     media=types.InputMediaPhoto(photo, caption=caption, parse_mode='HTML'),
                     reply_markup=markup)

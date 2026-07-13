@@ -196,7 +196,7 @@
       "rarity": "common",
       "name_en": "Saki Yamashita",
       "name_ru": "Саки Ямашита",
-      "type": 0,
+      "type": 4,
       "health": 1400,
       "attack": 500
     },
@@ -476,7 +476,7 @@
       "rarity": "rare",
       "name_en": "Teruhiko Yukimura",
       "name_ru": "Терухико Юкимура",
-      "type": 0,
+      "type": 3,
       "health": 2100,
       "attack": 700
     },
@@ -516,7 +516,7 @@
       "rarity": "epic",
       "name_en": "Asuka Shiraishi",
       "name_ru": "Асука Шираиши",
-      "type": 0,
+      "type": 4,
       "health": 2800,
       "attack": 1000
     },
@@ -586,7 +586,7 @@
       "rarity": "epic",
       "name_en": "Kikyou Kushida",
       "name_ru": "Кикё Кушида",
-      "type": 0,
+      "type": 1,
       "health": 3100,
       "attack": 1100
     },
@@ -596,7 +596,7 @@
       "rarity": "epic",
       "name_en": "Kouhei Katsuragi",
       "name_ru": "Кохей Кацураги",
-      "type": 0,
+      "type": 3,
       "health": 3000,
       "attack": 1000
     },
@@ -616,7 +616,7 @@
       "rarity": "epic",
       "name_en": "Masayoshi Hashimoto",
       "name_ru": "Масаёши Хашимото",
-      "type": 0,
+      "type": 1,
       "health": 2800,
       "attack": 1000
     },
@@ -676,7 +676,7 @@
       "rarity": "epic",
       "name_en": "Sakurako Tsubaki",
       "name_ru": "Сакурако Цубаки",
-      "type": 0,
+      "type": 3,
       "health": 3000,
       "attack": 1000
     },
@@ -686,19 +686,19 @@
       "rarity": "epic",
       "name_en": "Yousuke Hirata",
       "name_ru": "Йосуке Хирата",
-      "type": 0,
+      "type": 4,
       "health": 3000,
       "attack": 1000
     },
     {
       "id": 70,
       "filename": "arisu_sakayanagi.jpg",
-      "rarity": "mythic",
+      "rarity": "legendary",
       "name_en": "Arisu Sakayanagi",
       "name_ru": "Арису Сакаянаги",
       "type": 1,
-      "health": 4900,
-      "attack": 1700
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 71,
@@ -706,7 +706,7 @@
       "rarity": "mythic",
       "name_en": "Chie Hoshinomiya",
       "name_ru": "Чие Хошиномия",
-      "type": 0,
+      "type": 2,
       "health": 3800,
       "attack": 1300
     },
@@ -723,22 +723,22 @@
     {
       "id": 73,
       "filename": "honami_ichinose.jpg",
-      "rarity": "mythic",
+      "rarity": "legendary",
       "name_en": "Honami Ichinose",
       "name_ru": "Хонами Ичиносе",
       "type": 4,
-      "health": 5000,
-      "attack": 1800
+      "health": 5900,
+      "attack": 1900
     },
     {
       "id": 74,
       "filename": "kakeru_ryuen.jpg",
-      "rarity": "mythic",
+      "rarity": "legendary",
       "name_en": "Kakeru Ryuen",
       "name_ru": "Какеру Рьюен",
       "type": 2,
-      "health": 5100,
-      "attack": 1700
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 75,
@@ -766,7 +766,7 @@
       "rarity": "mythic",
       "name_en": "Manabu Horikita",
       "name_ru": "Манабу Хорикита",
-      "type": 0,
+      "type": 4,
       "health": 4400,
       "attack": 1300
     },
@@ -802,13 +802,13 @@
     },
     {
       "id": 81,
-      "filename": "suzune_horikita.jpg",
-      "rarity": "mythic",
+      "filename": "suzune_horikita.mp4",
+      "rarity": "legendary",
       "name_en": "Suzune Horikita",
       "name_ru": "Сузуне Хорикита",
       "type": 3,
-      "health": 5000,
-      "attack": 1700
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 82,
@@ -826,7 +826,7 @@
       "rarity": "mythic",
       "name_en": "Tsubasa Nanase",
       "name_ru": "Цубаса Нанасе",
-      "type": 0,
+      "type": 4,
       "health": 4300,
       "attack": 1400
     },
@@ -836,7 +836,7 @@
       "rarity": "legendary",
       "name_en": "Atsuomi Ayanokoji",
       "name_ru": "Ацуоми Аянокоджи",
-      "type": 0,
+      "type": 1,
       "health": 6500,
       "attack": 2000
     },
@@ -863,22 +863,22 @@
     {
       "id": 87,
       "filename": "president_kouenji.mp4",
-      "rarity": "legendary",
+      "rarity": "mythic",
       "name_en": "President Kouenji",
       "name_ru": "Президент Коенджи",
       "type": 2,
-      "health": 6000,
-      "attack": 2100
+      "health": 5200,
+      "attack": 1700
     },
     {
       "id": 88,
       "filename": "prime_minister_kijima.mp4",
-      "rarity": "legendary",
+      "rarity": "mythic",
       "name_en": "Prime Minister Kijima",
       "name_ru": "Премьер-Министр Киджима",
-      "type": 0,
-      "health": 5900,
-      "attack": 2000
+      "type": 4,
+      "health": 5200,
+      "attack": 1700
     },
     {
       "id": 89,

@@ -1,5 +1,5 @@
 from bot_core import bot, logger, pending_lava_payments
-from bd_workers import plus_shards, mark_payment_processed, is_payment_processed
+from bd_workers import update_currency, mark_payment_processed, is_payment_processed
 
 
 def process_lava_webhook(data):
@@ -30,7 +30,7 @@ def process_lava_webhook(data):
             return
 
         if shards > 0:
-            plus_shards(user_id, shards)
+            update_currency(user_id, 'shards', shards)
         mark_payment_processed(operation_id, int(user_id), amount, "shards", shards, f"lava_{contract_id}")
         bot.send_message(
             user_id,

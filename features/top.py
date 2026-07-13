@@ -1,4 +1,4 @@
-from bot_core import bot
+from bot_core import bot, resolve_user
 from bot_core import is_message_old, safe_delete_message, get_league
 from bd_workers import get_top_players
 from telebot import types
@@ -8,7 +8,17 @@ from telebot import types
 def choose_top_type(call):
     if is_message_old(call):
         return
-    user_id = int(call.from_user.id)
+    user_id, chat_id, username = resolve_user(call)
+    markup = types.InlineKeyboardMarkup(row_width=1)
+    buttons = [
+        types.InlineKeyboardButton("По очкам 💠", callback_data="top_pts"),
+        types.InlineKeyboardButton("по MMR 🏆", callback_data="top_mmr"),
+        types.InlineKeyboardButton("В меню", callback_data="main_menu"),
+    ]
+    markup.add(*buttons)
+    safe_delete_message(bot, chat_id, call.message.message_id)
+    bot.answer_callback_query(call.id)
+    bot.send_message(user_id, 'Выберите топ:', reply_markup=markup)
     markup = types.InlineKeyboardMarkup(row_width=1)
     buttons = [
         types.InlineKeyboardButton("По очкам 💠", callback_data="top_pts"),
@@ -25,11 +35,9 @@ def choose_top_type(call):
 def show_top_pts(call):
     if is_message_old(call):
         return
-    chat_id = call.message.chat.id
-    user_id = str(call.from_user.id)
-    username = call.from_user.username
+    user_id, chat_id, username = resolve_user(call)
     firstname = call.from_user.first_name
-    safe_delete_message(bot, call.message.chat.id, call.message.message_id)
+    safe_delete_message(bot, chat_id, call.message.message_id)
 
     top_func = get_top_players(user_id, 10)
     lines = '\n'.join(
@@ -58,11 +66,9 @@ def show_top_pts(call):
 def show_top_mmr(call):
     if is_message_old(call):
         return
-    chat_id = call.message.chat.id
-    user_id = str(call.from_user.id)
-    username = call.from_user.username
+    user_id, chat_id, username = resolve_user(call)
     firstname = call.from_user.first_name
-    safe_delete_message(bot, call.message.chat.id, call.message.message_id)
+    safe_delete_message(bot, chat_id, call.message.message_id)
 
     top_func = get_top_players(user_id, 10, order_col='mmr')
     lines = '\n'.join(
