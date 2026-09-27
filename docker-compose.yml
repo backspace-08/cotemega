@@ -7,8 +7,6 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -17,15 +15,26 @@ services:
       timeout: 5s
       retries: 5
 
+  redis:
+    container_name: megaverse-redis
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+
   bot:
     container_name: megaverse-bot
     build: .
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
     env_file: .env
     environment:
       DB_HOST: postgres
+      REDIS_URL: redis://redis:6379/0
     ports:
       - "9080:9080"
     volumes:
@@ -34,3 +43,4 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:

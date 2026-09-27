@@ -1,0 +1,14 @@
+.git
+.gitignore
+venv
+.venv
+__pycache__
+*.pyc
+bot_errors.log
+cfr_metrics.log*
+.env
+.vscode
+
+# Rust build output (rebuilt in the image); keep the private table in context
+cote_cfr/target
+cote_cfr/*.so
