@@ -1,0 +1,17 @@
+[package]
+name = "cote-cfr"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "_cote_cfr"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.22", features = ["extension-module", "abi3-py39"] }
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
