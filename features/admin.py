@@ -1,211 +1,384 @@
-from bot_core import bot
-from bot_core import safe_delete_message
-from bot_core import get_type_char,get_mmr,get_rewards
-from config import ADMIN_ID, CHARS_IMAGES_DIR, ANIMATED_EXTENSIONS
-from database import get_session
-from models import Character,User
-from bd_workers import update_currency
-from bd_workers import get_all_users
-from bd_workers import get_username
-from bd_workers import save_user_character
-import telebot
-from telebot import types
-from functools import partial
-import time
-from sqlalchemy import select, func, update
+import asyncio
+import random
 
-def admin_only(func):
-    """Декоратор для проверки прав администратора"""
-    def wrapper(message):
-        if message.from_user.id != ADMIN_ID:
-            bot.reply_to(message, "⛔ У вас нет прав на эту команду")
-            return
-        return func(message)
-    return wrapper
+from aiogram import Bot, Router
+from aiogram.filters import Command, StateFilter
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.state import State, StatesGroup
+from aiogram.types import CallbackQuery, Message
+
+from config import (
+    ADMIN_ID,
+    CFR_MAX_ACTIVE,
+    CFR_MAX_CONCURRENCY,
+    FULL_RESET_PHRASE,
+    START_SPINS,
+)
+from core.callbacks import AdminShardsCB
+from core.keyboards import admin_shards_kb
+from core.logger import logger
+from core.texts import character_caption
+from core.utils import run_db, safe_delete_message, send_character_card
+from features.arena import cfr_player
+from features.arena.metrics import stats as cfr_stats
+from features.arena.results import bot_winrate_line
+from db.queries import (
+    get_all_user_ids,
+    get_character_by_id,
+    get_user_id_by_username,
+    get_username,
+    grant_character,
+    reset_all_progress,
+    update_currency,
+)
+
+router = Router()
 
 
-def admin_quit(message):
-    msg = message.lower()
-    if msg == 'quit':
-        bot.send_message(ADMIN_ID,text='Выход из команды')
+class AdminForm(StatesGroup):
+    get_id_username = State()
+    shards_user_id = State()
+    shards_manual_amount = State()
+    shards_description = State()
+    give_char_id = State()
+    all_currency_amount = State()
+    full_reset_confirm = State()
+
+
+def is_admin(event: Message | CallbackQuery) -> bool:
+    return event.from_user is not None and event.from_user.id == ADMIN_ID
+
+
+async def _quit_if_requested(message: Message, state: FSMContext) -> bool:
+    if (message.text or "").strip().lower() == "quit":
+        await message.answer("Выход из команды")
+        await state.clear()
         return True
+    return False
 
 
-@bot.message_handler(commands=['get_id'])
-@admin_only
-def handle_send_message(message):
-    """Обработчик айди по юзернейму"""
-    msg = bot.send_message(message.chat.id, "Введите @ пользователя:")
-    bot.register_next_step_handler(msg, process_id_step)
-def process_id_step(message):
-    """Обработка username получателя"""
-    try:
-        if admin_quit(message.text):
-            return
-        username = str(message.text)
-        if '@' in username[0]:
-            username=username[1:]
-        with get_session() as session:
-            user_id = session.execute(select(User.user_id).where(User.username == username))
-        bot.send_message(message.chat.id, user_id)
-    except Exception as e:
-        bot.reply_to(message, f"❌ Ошибка: {e}")
-@bot.message_handler(commands=['give_shards'])
-@admin_only
-def handle_admin_message(message):
-    msg = bot.send_message(message.chat.id, "Введите ID пользователя:")
-    bot.register_next_step_handler(msg, process_give_shards_1)
-def process_give_shards_1(message):
-    """Обработка раздачи круток"""
-    try:
-        if admin_quit(message.text):
-            return
-        markup=types.InlineKeyboardMarkup(row_width=1)
-        user_id = str(message.text)
-        username=get_username(user_id)
-        buttons=[
-            types.InlineKeyboardButton('80🔮', callback_data=f'give_shards:80:{user_id}'),
-            types.InlineKeyboardButton('300🔮', callback_data=f'give_shards:300:{user_id}'),
-            types.InlineKeyboardButton('600🔮', callback_data=f'give_shards:600:{user_id}'),
-            types.InlineKeyboardButton('1300🔮', callback_data=f'give_shards:1300:{user_id}'),
-            types.InlineKeyboardButton('Ввести вручную', callback_data=f'give_shards:hand:{user_id}')
-        ]
-        markup.add(*buttons)
-        bot.send_message(ADMIN_ID,f'Выберете количество осколков для юзера @{username[0]} с id {user_id}',reply_markup=markup)
-    except Exception as e:
-        bot.reply_to(message, f"❌ Ошибка: {e}")
-@bot.callback_query_handler(func=lambda call: call.data.startswith('give_shards'))
-def handle_give_shards(call):
-    try:
-        amount=None
-        _,action,user_id=call.data.split(':')
-        username=get_username(user_id)
-        bot.answer_callback_query(call.id)
-        safe_delete_message(bot,call.message.chat.id,call.message.id)
-        if action!='hand':
-            amount=action
-        else:
-            msg=bot.send_message(ADMIN_ID,f'Введите количество осколков для юзера @{username[0]} с id {user_id}')
-            bot.register_next_step_handler(msg, lambda m: process_give_shards_hand(m,user_id=user_id))
-            return
-        msg=bot.send_message(ADMIN_ID,f'Введите описание для юзера @{username[0]} с id {user_id}. Если описания нет, введите "нет" или "None". Базовое описание: На ваш аккаунт поступило {amount} 🔮')
-        bot.register_next_step_handler(msg, lambda m: process_give_shards_finally(m,user_id=user_id,shards=amount))
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Ошибка: {e}")
-def process_give_shards_hand(message,user_id):
-    try:
-        if admin_quit(message.text):
-            return
-        username=get_username(user_id)
-        shards=(message.text)
-        msg=bot.send_message(ADMIN_ID,f'Введите описание для юзера @{username[0]} с id {user_id}. Если описания нет, введите "нет" или "None". Базовое описание: На ваш аккаунт поступило {shards} 🔮')
-        bot.register_next_step_handler(msg, lambda m: process_give_shards_finally(m,user_id=user_id,shards=shards))
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Ошибка: {e}")
-def process_give_shards_finally(message,user_id,shards):
-    try:
-        user=int(user_id)
-        if admin_quit(message.text):
-            return
-        msg_text=(message.text)
-        if msg_text.lower()=='нет' or msg_text.lower()=='none':
-            text=''
-        else:
-            text=msg_text
-        update_currency(user, 'shards', int(shards))
-        bot.send_message(user,f'На ваш аккаунт поступило {shards} 🔮 {text}')
-        username=get_username(user_id)
-        bot.send_message(ADMIN_ID,f'На аккаунт {username[0]} с ID {user_id} поступило {shards} 🔮 с описанием {text}')
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Ошибка: {e}")
+async def _username_or_id(user_id: int) -> str:
+    return await run_db(get_username, user_id) or str(user_id)
 
 
-@bot.message_handler(commands=['give_char'])
-@admin_only
-def handle_give_char(message):
-    msg = bot.send_message(message.chat.id, "Введите ID персонажа из БД:")
-    bot.register_next_step_handler(msg, process_give_char)
+# ──────────────────────────────────────────────
+# /get_id
+# ──────────────────────────────────────────────
+
+@router.message(Command("get_id"), is_admin)
+async def get_id_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(AdminForm.get_id_username)
+    await message.answer("Введите @ пользователя:")
 
 
-def process_give_char(message):
+@router.message(StateFilter(AdminForm.get_id_username), is_admin)
+async def get_id_process(message: Message, state: FSMContext) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    username = (message.text or "").strip().lstrip("@")
+    user_id = await run_db(get_user_id_by_username, username)
+    await state.clear()
+    await message.answer(f"{user_id}" if user_id else "❌ Пользователь не найден")
+
+
+# ──────────────────────────────────────────────
+# /give_shards
+# ──────────────────────────────────────────────
+
+@router.message(Command("give_shards"), is_admin)
+async def give_shards_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(AdminForm.shards_user_id)
+    await message.answer("Введите ID пользователя:")
+
+
+@router.message(StateFilter(AdminForm.shards_user_id), is_admin)
+async def give_shards_user(message: Message, state: FSMContext) -> None:
+    if await _quit_if_requested(message, state):
+        return
     try:
-        if admin_quit(message.text):
-            return
-        char_id = int(message.text)
+        user_id = int((message.text or "").strip())
     except ValueError:
-        bot.reply_to(message, "❌ ID должен быть числом")
+        await message.answer("❌ ID должен быть числом")
+        return
+    username = await _username_or_id(user_id)
+    await state.update_data(user_id=user_id)
+    await state.set_state(None)
+    await message.answer(
+        f"Выберите количество осколков для @{username} (id {user_id}):",
+        reply_markup=admin_shards_kb(user_id),
+    )
+
+
+@router.callback_query(AdminShardsCB.filter(), is_admin)
+async def give_shards_amount(
+    callback: CallbackQuery, callback_data: AdminShardsCB, state: FSMContext, bot: Bot
+) -> None:
+    user_id = callback_data.user_id
+    username = await _username_or_id(user_id)
+    await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
+
+    if callback_data.amount == "hand":
+        await state.update_data(user_id=user_id)
+        await state.set_state(AdminForm.shards_manual_amount)
+        await bot.send_message(ADMIN_ID, f"Введите количество осколков для @{username} (id {user_id})")
+        await callback.answer()
         return
 
+    await state.update_data(user_id=user_id, shards=callback_data.amount)
+    await state.set_state(AdminForm.shards_description)
+    await bot.send_message(
+        ADMIN_ID,
+        f"Введите описание для @{username} (id {user_id}). Если описания нет, введите «нет».\n"
+        f"Базовое описание: На ваш аккаунт поступило {callback_data.amount} 🔮",
+    )
+    await callback.answer()
+
+
+@router.message(StateFilter(AdminForm.shards_manual_amount), is_admin)
+async def give_shards_manual(message: Message, state: FSMContext) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    text = (message.text or "").strip()
+    if not text.isdigit():
+        await message.answer("❌ Введите целое число")
+        return
+    data = await state.get_data()
+    user_id = data["user_id"]
+    username = await _username_or_id(user_id)
+    await state.update_data(shards=text)
+    await state.set_state(AdminForm.shards_description)
+    await message.answer(
+        f"Введите описание для @{username} (id {user_id}). Если описания нет, введите «нет».\n"
+        f"Базовое описание: На ваш аккаунт поступило {text} 🔮"
+    )
+
+
+@router.message(StateFilter(AdminForm.shards_description), is_admin)
+async def give_shards_finish(message: Message, state: FSMContext, bot: Bot) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    data = await state.get_data()
+    user_id = int(data["user_id"])
+    shards = int(data["shards"])
+    description = (message.text or "").strip()
+    if description.lower() in ("нет", "none"):
+        description = ""
+
+    await run_db(update_currency, user_id, "shards", shards)
+    await state.clear()
+
     try:
-        with get_session() as session:
-            char = session.get(Character, char_id)
-            if not char:
-                bot.reply_to(message, "❌ Персонаж с таким ID не найден")
-                return
-            image_path = char.image_path
-            translation = char.translation
-            rarity = char.rarity
-            ctype = int(char.type)
-            health = char.health
-            attack = char.attack
+        text = f"На ваш аккаунт поступило {shards} 🔮 {description}".strip()
+        await bot.send_message(user_id, text)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Не удалось уведомить {user_id}: {e}")
 
-        user_id = message.from_user.id
-        char_path = CHARS_IMAGES_DIR / image_path
-        emoji = get_type_char(ctype) or '🚫'
-
-        caption = (
-            f'🎴 Выдан персонаж: \n'
-            f'{emoji} {translation}\n'
-            f'Редкость - {rarity}\n'
-            f'<blockquote>├‣❤️ - {health}\n├‣💪 - {attack}</blockquote>'
-        )
-
-        if char_path.suffix.lower() in ANIMATED_EXTENSIONS:
-            with char_path.open('rb') as f:
-                bot.send_animation(message.chat.id, f, caption=caption, parse_mode="HTML")
-        else:
-            with char_path.open('rb') as f:
-                bot.send_photo(message.chat.id, f, caption=caption, parse_mode="HTML")
-
-        save_user_character(str(user_id), char_path)
-
-    except Exception as e:
-        bot.reply_to(message, f"❌ Ошибка: {e}")
+    username = await _username_or_id(user_id)
+    await message.answer(
+        f"На аккаунт @{username} (ID {user_id}) поступило {shards} 🔮 с описанием {description}"
+    )
 
 
+# ──────────────────────────────────────────────
+# /give_char
+# ──────────────────────────────────────────────
 
-@bot.message_handler(commands=['reset_arena'])
-@admin_only
-def handle_arena_reset(message):
+@router.message(Command("give_char"), is_admin)
+async def give_char_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(AdminForm.give_char_id)
+    await message.answer("Введите ID персонажа из БД:")
+
+
+@router.message(StateFilter(AdminForm.give_char_id), is_admin)
+async def give_char_process(message: Message, state: FSMContext, bot: Bot) -> None:
+    if await _quit_if_requested(message, state):
+        return
     try:
-        results = []
-        for user in get_all_users():
-            try:
-                league,mmr = get_mmr(user['user_id'])
-                rewards = get_rewards(mmr)
-                spins = rewards["spins"]
-                shards = rewards["shards"]
-                special_text = ", special🤍" if mmr>7999 else ""
-                reward_text=f'Сезон арены окончен!\nMMR - {mmr}\nЛига - {league["name"]}\nНаграды - 🎴 {spins}, 🔮{shards}{special_text}'
-                bot.send_message(chat_id=user['user_id'], text=reward_text)
-                with get_session() as session:
-                    session.execute(
-                        update(User)
-                        .where(User.user_id == user['user_id'])
-                        .values(
-                            mmr=0,
-                            spins=User.spins + spins,
-                            shards=User.shards + shards,
-                        )
-                    )
-                results.append(True)
-                time.sleep(0.1)
-            except:
-                results.append(False)
-        success = sum(results)
-        bot.send_message(
-            ADMIN_ID,
-            f"✅ Рассылка завершена!\nУспешно: {success}\nНеудачно: {len(results)-success}"
-        )
-    except Exception as e:
-        bot.send_message(ADMIN_ID, f"❌ Ошибка: {str(e)}")
+        char_id = int((message.text or "").strip())
+    except ValueError:
+        await message.answer("❌ ID должен быть числом")
+        return
+
+    card = await run_db(get_character_by_id, char_id)
+    if card is None:
+        await message.answer("❌ Персонаж с таким ID не найден")
+        return
+
+    await state.clear()
+    await send_character_card(
+        bot, message.chat.id, card.image_path, character_caption(card, title="🎴 Выдан персонаж:")
+    )
+    await run_db(grant_character, message.from_user.id, char_id)
+
+
+# ──────────────────────────────────────────────
+# /admin_commands
+# ──────────────────────────────────────────────
+
+ADMIN_COMMANDS_TEXT = (
+    "<b>🛠 Админ-команды</b>\n"
+    "/admin_commands — этот список\n"
+    "/get_id — узнать ID по @username\n"
+    "/give_shards — выдать осколки одному игроку (кнопки или вручную + описание)\n"
+    "/give_char — выдать себе персонажа по ID из БД\n"
+    "/give_all — выдать валюту ВСЕМ (например «500» = осколки, «500 spins», «500 super_spins»)\n"
+    "/full_reset — полная отчистка прогресса всех игроков (с подтверждением)\n"
+    "/season_end — закрыть сезон арены: награды + soft reset + новый сезон\n"
+    "/cfr_stats — нагрузка CFR, рейтинг и винрейт бота\n"
+    "/cfr_bench [N] — бенч параллельных решений и памяти\n"
+    "/cfr_selftest — проверка CFR против случайной политики"
+)
+
+
+@router.message(Command("admin_commands"), is_admin)
+async def admin_commands(message: Message) -> None:
+    await message.answer(ADMIN_COMMANDS_TEXT)
+
+
+# ──────────────────────────────────────────────
+# /give_all
+# ──────────────────────────────────────────────
+
+@router.message(Command("give_all"), is_admin)
+async def give_all_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(AdminForm.all_currency_amount)
+    await message.answer(
+        "Введите сумму и валюту:\n"
+        "«500» — осколки (по умолчанию)\n"
+        "«500 spins» — крутки\n"
+        "«500 super_spins» — супер-крутки"
+    )
+
+
+@router.message(StateFilter(AdminForm.all_currency_amount), is_admin)
+async def give_all_amount(message: Message, state: FSMContext, bot: Bot) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    parts = (message.text or "").split()
+    currency = parts[1] if len(parts) > 1 else "shards"
+    if currency not in ("shards", "spins", "super_spins"):
+        await message.answer("❌ Валюта: shards / spins / super_spins")
+        return
+    try:
+        amount = int(parts[0])
+    except (ValueError, IndexError):
+        await message.answer("❌ Введите целое число, например «500 spins»")
+        return
+
+    await state.clear()
+    icon = {"shards": "🔮", "spins": "🎴", "super_spins": "🧧"}[currency]
+    user_ids = await run_db(get_all_user_ids)
+    sent = 0
+    for uid in user_ids:
+        try:
+            await run_db(update_currency, uid, currency, amount)
+            await bot.send_message(uid, f"🎁 Вам начислено {amount} {icon}")
+            sent += 1
+            await asyncio.sleep(0.05)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"give_all: не удалось начислить {uid}: {e}")
+    await message.answer(f"✅ Начислено {amount} {icon} всем ({sent}/{len(user_ids)})")
+
+
+# ──────────────────────────────────────────────
+# /full_reset
+# ──────────────────────────────────────────────
+
+@router.message(Command("full_reset"), is_admin)
+async def full_reset_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(AdminForm.full_reset_confirm)
+    await message.answer(
+        "⚠️ <b>Полная отчистка</b> удалит у ВСЕХ:\n"
+        "очки, рейтинг, осколки, крутки, персонажей, инвентарь, колоды и стату арены.\n"
+        f"Аккаунты останутся. Круток будет {START_SPINS}.\n\n"
+        f"Напишите <b>{FULL_RESET_PHRASE}</b> для подтверждения или /quit для отмены."
+    )
+
+
+@router.message(StateFilter(AdminForm.full_reset_confirm), is_admin)
+async def full_reset_confirm(message: Message, state: FSMContext) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    if (message.text or "").strip() != FULL_RESET_PHRASE:
+        await state.clear()
+        await message.answer("❌ Отменено: фраза подтверждения не совпала")
+        return
+    await state.clear()
+    count = await run_db(reset_all_progress)
+    await message.answer(f"✅ Полная отчистка выполнена. Аккаунтов обнулено: {count}")
+
+
+# ──────────────────────────────────────────────
+# /cfr_stats
+# ──────────────────────────────────────────────
+
+@router.message(Command("cfr_stats"), is_admin)
+async def show_cfr_stats(message: Message) -> None:
+    limits = (
+        f"\nЛимиты: решений одновременно ≤ {CFR_MAX_CONCURRENCY or '∞'}, "
+        f"активных PvE ≤ {CFR_MAX_ACTIVE or '∞'}"
+    )
+    bot_line = await run_db(bot_winrate_line)
+    await message.answer(cfr_stats.report(active_matches=cfr_player.active_count()) + bot_line + limits)
+
+
+@router.message(Command("cfr_bench"), is_admin)
+async def run_cfr_bench(message: Message) -> None:
+    if not cfr_player.CFR_AVAILABLE:
+        await message.answer("🤖 CFR недоступен (нет _cote_cfr/таблицы)")
+        return
+    parts = (message.text or "").split()
+    n = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else cfr_stats_cores()
+    await message.answer(f"⏱ Бенч: {n} параллельных решений...")
+    from features.arena.bench import run_bench
+
+    result = await asyncio.to_thread(run_bench, n)
+    if result is None:
+        await message.answer("🤖 CFR недоступен")
+        return
+    await message.answer(
+        f"⏱ <b>CFR bench</b> ({result['bots']} ботов, ядер {result['cores']}, турн 7)\n"
+        f"Последовательно: {result['seq_per_move_ms']:.0f}мс/ход (итого {result['seq_total_ms']:.0f}мс)\n"
+        f"Параллельно: {result['conc_per_move_ms']:.0f}мс/ход (итого {result['conc_wall_ms']:.0f}мс)\n"
+        f"Ускорение: ×{result['speedup']:.2f} (≈1 → GIL держит, ≈ядра → параллельно)\n"
+        f"Память: бот {result['mem_per_bot_mb']:.1f}МБ, пик на решение "
+        f"{result['mem_per_solve_peak_mb']:.1f}МБ\n"
+        f"RSS: база {result['base_rss_mb']:.0f}МБ → пик {result['peak_rss_mb']:.0f}МБ"
+    )
+
+
+def cfr_stats_cores() -> int:
+    from os import cpu_count
+
+    return cpu_count() or 4
+
+
+@router.message(Command("cfr_selftest"), is_admin)
+async def run_cfr_selftest(message: Message) -> None:
+    if not cfr_player.CFR_AVAILABLE:
+        await message.answer("🤖 CFR недоступен (нет _cote_cfr/таблицы)")
+        return
+    await message.answer("🤖 Self-test: CFR против random, 5 игр...")
+    from features.arena.selftest import run_games
+
+    result = await asyncio.to_thread(run_games, 5, random.randrange(1 << 30))
+    await message.answer(
+        f"CFR vs random: {result['wins']}/{result['games']} побед, "
+        f"в среднем {result['avg_turns']:.0f} ходов"
+    )
+
+
+# ──────────────────────────────────────────────
+# /season_end — force close the current season
+# ──────────────────────────────────────────────
+
+@router.message(Command("season_end"), is_admin)
+async def season_end(message: Message, bot: Bot) -> None:
+    from features.arena.seasons import run_season_close
+
+    await message.answer("🏁 Закрываю сезон: награды, soft-reset, новый сезон...")
+    try:
+        result = await run_season_close(bot)
+        await message.answer(f"✅ Сезон закрыт. Награждено игроков: {result['count']}")
+    except Exception as e:  # noqa: BLE001
+        await message.answer(f"❌ Ошибка: {e}")
