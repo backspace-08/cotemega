@@ -55,6 +55,19 @@ def active_count() -> int:
     return len(_players)
 
 
+async def prune_stale() -> int:
+    """Drop bot instances whose match no longer exists in Redis (abandoned)."""
+    from features.arena.store import MatchStore
+
+    store = MatchStore()
+    removed = 0
+    for match_id in list(_players):
+        if await store.load(match_id) is None:
+            _players.pop(match_id, None)
+            removed += 1
+    return removed
+
+
 _semaphore: asyncio.Semaphore | None = None
 
 

@@ -19,6 +19,7 @@ async def _start_site(app: web.Application) -> web.AppRunner:
 
 
 async def _season_watcher(bot) -> None:
+    from features.arena import cfr_player
     from features.arena.decay import run_decay
     from features.arena.seasons import maybe_close_season
 
@@ -29,6 +30,12 @@ async def _season_watcher(bot) -> None:
                 logger.info(f"Arena decay applied to {charged} players")
         except Exception as e:  # noqa: BLE001
             logger.error(f"Decay task error: {e}")
+        try:
+            pruned = await cfr_player.prune_stale()
+            if pruned:
+                logger.info(f"Pruned {pruned} abandoned PvE bot instances")
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"PvE prune task error: {e}")
         try:
             if await maybe_close_season(bot):
                 logger.info("Arena season closed and rolled over")
