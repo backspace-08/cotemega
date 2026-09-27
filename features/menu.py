@@ -1,52 +1,51 @@
-from bot_core import bot, resolve_user, logger
-from bot_core import is_message_old, safe_delete_message, show_main_menu
-from bd_workers import save_user, ensure_user
-from bd_workers import is_user_has_characters
-from features.gacha import give_first_character
-from telebot import types
+from aiogram import Bot, F, Router
+from aiogram.filters import Command, CommandStart
+from aiogram.types import CallbackQuery, Message
+
+from core.callbacks import MenuCB, NoopCB
+from core.logger import logger
+from core.texts import character_caption
+from core.utils import run_db, safe_delete_message, send_character_card, show_main_menu
+from db.queries import is_user_has_characters
+from services.gacha import give_first_character
+
+router = Router()
 
 
-@bot.callback_query_handler(func=lambda c: c.data == 'placeholder')
-def ignore_placeholder(call):
+@router.callback_query(NoopCB.filter())
+async def ignore_page_counter(callback: CallbackQuery) -> None:
+    await callback.answer()
+
+
+@router.message(CommandStart())
+async def cmd_start(message: Message, bot: Bot, user_id: int) -> None:
     try:
-        bot.answer_callback_query(call.id)
-    except:
-        pass
-
-
-@bot.message_handler(commands=['menu'])
-def menu(message):
-    user_id, chat_id, username = resolve_user(message)
-    try:
-        show_main_menu(chat_id=chat_id, user_id=user_id, username=username)
-    except Exception as e:
-        logger.error(f"Ошибка при обработке команды /menu: {e}")
-        bot.send_message(chat_id, "Произошла ошибка. Пожалуйста, попробуйте еще раз.")
-
-
-@bot.message_handler(commands=['start'])
-def start_message(message):
-    user_id, chat_id, username = resolve_user(message)
-    try:
-        if not is_user_has_characters(user_id):
-            give_first_character(message)
+        if not await run_db(is_user_has_characters, user_id):
+            result = await run_db(give_first_character, user_id)
+            if result.card is not None:
+                caption = character_caption(
+                    result.card, title="Это ваш первый персонаж:", points=result.points
+                )
+                await send_character_card(bot, message.chat.id, result.card.image_path, caption)
         else:
-            bot.send_message(
-                chat_id,
-                'Вы уже получили первого персонажа'
-            )
-            show_main_menu(chat_id=chat_id, user_id=user_id, username=username)
-
-    except Exception as e:
+            await message.answer("Вы уже получили первого персонажа")
+        await show_main_menu(bot, message.chat.id, user_id)
+    except Exception as e:  # noqa: BLE001
         logger.error(f"Ошибка при обработке команды /start: {e}")
-        bot.send_message(chat_id, "Произошла ошибка. Пожалуйста, попробуйте еще раз.")
+        await message.answer("Произошла ошибка. Пожалуйста, попробуйте еще раз.")
 
 
-@bot.callback_query_handler(func=lambda call: call.data=='main_menu')
-def go_to_main_menu(call):
-    if is_message_old(call):
-        return
-    user_id, chat_id, username = resolve_user(call)
-    safe_delete_message(bot, chat_id, call.message.message_id)
-    show_main_menu(chat_id=chat_id, user_id=user_id, username=username)
-    bot.answer_callback_query(call.id)
+@router.message(Command("menu"))
+async def cmd_menu(message: Message, bot: Bot, user_id: int) -> None:
+    try:
+        await show_main_menu(bot, message.chat.id, user_id)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Ошибка при обработке команды /menu: {e}")
+        await message.answer("Произошла ошибка. Пожалуйста, попробуйте еще раз.")
+
+
+@router.callback_query(MenuCB.filter(F.action == "main"))
+async def go_to_main_menu(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+    await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
+    await show_main_menu(bot, callback.message.chat.id, user_id)
+    await callback.answer()

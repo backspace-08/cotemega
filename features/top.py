@@ -1,93 +1,74 @@
-from bot_core import bot, resolve_user
-from bot_core import is_message_old, safe_delete_message, get_league
-from bd_workers import get_top_players
-from telebot import types
+from html import escape
+
+from aiogram import Bot, F, Router
+from aiogram.types import CallbackQuery
+
+from config import ARENA_CALIBRATION_MATCHES
+from core.callbacks import MenuCB, TopCB
+from core.keyboards import top_types_kb
+from core.utils import run_db, safe_delete_message
+from db.queries import count_ranked_users, get_top_players
+from features.arena.leagues import league_for_rank
+
+router = Router()
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'top')
-def choose_top_type(call):
-    if is_message_old(call):
-        return
-    user_id, chat_id, username = resolve_user(call)
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    buttons = [
-        types.InlineKeyboardButton("По очкам 💠", callback_data="top_pts"),
-        types.InlineKeyboardButton("по MMR 🏆", callback_data="top_mmr"),
-        types.InlineKeyboardButton("В меню", callback_data="main_menu"),
-    ]
-    markup.add(*buttons)
-    safe_delete_message(bot, chat_id, call.message.message_id)
-    bot.answer_callback_query(call.id)
-    bot.send_message(user_id, 'Выберите топ:', reply_markup=markup)
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    buttons = [
-        types.InlineKeyboardButton("По очкам 💠", callback_data="top_pts"),
-        types.InlineKeyboardButton("по MMR 🏆", callback_data="top_mmr"),
-        types.InlineKeyboardButton("В меню", callback_data="main_menu"),
-    ]
-    markup.add(*buttons)
-    safe_delete_message(bot, call.message.chat.id, call.message.message_id)
-    bot.answer_callback_query(call.id)
-    bot.send_message(user_id, 'Выберите топ:', reply_markup=markup)
+@router.callback_query(MenuCB.filter(F.action == "top"))
+async def choose_top_type(callback: CallbackQuery, bot: Bot) -> None:
+    await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
+    await bot.send_message(callback.message.chat.id, "Выберите топ:", reply_markup=top_types_kb())
+    await callback.answer()
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'top_pts')
-def show_top_pts(call):
-    if is_message_old(call):
-        return
-    user_id, chat_id, username = resolve_user(call)
-    firstname = call.from_user.first_name
-    safe_delete_message(bot, chat_id, call.message.message_id)
+def _user_link(callback: CallbackQuery) -> str:
+    name = escape(callback.from_user.first_name or "Игрок")
+    if callback.from_user.username:
+        return f'<b><a href="https://t.me/{callback.from_user.username}">{name}</a></b>'
+    return f"<b>{name}</b>"
 
-    top_func = get_top_players(user_id, 10)
-    lines = '\n'.join(
-        f'{pos}. {name} - <em><b>{points} pts</b></em>'
-        for pos, name, points in top_func['top']
-    )
-    user = top_func['user_position']
-    user_page = (
-        f'<b><a href="https://t.me/{username}">{firstname}</a></b>'
-        if username else f'<b>{firstname}</b>'
-    )
+
+async def _render_top(callback: CallbackQuery, bot: Bot, kind: str) -> None:
+    user_id = callback.from_user.id
+    if kind == "points":
+        data = await run_db(get_top_players, user_id, 10, "points")
+        title = "вот топ по очкам сейчас"
+        lines = "\n".join(
+            f"{pos}. {escape(name or 'Игрок')} - <em><b>{value} pts</b></em>"
+            for pos, name, value in data["top"]
+        )
+    else:
+        data = await run_db(get_top_players, user_id, 10, "rating", ARENA_CALIBRATION_MATCHES)
+        total = await run_db(count_ranked_users)
+        title = "вот топ по арене сейчас"
+        lines = "\n".join(
+            f"{pos}. {escape(name or 'Игрок')} - {league_for_rank(pos, total).emoji} <em><b>{round(value or 0)}</b></em>"
+            for pos, name, value in data["top"]
+        )
+
+    position = data.get("user_position", {}).get("position", "—")
     text = (
-        f'⚡ {user_page}, вот топ по очкам сейчас: \n'
-        f'➖➖➖➖➖➖\n'
-        f'{lines}\n'
-        f'➖➖➖➖➖➖\n'
-        f'⏺️ Твое место - {user["position"]} '
+        f"⚡ {_user_link(callback)}, {title}: \n"
+        f"➖➖➖➖➖➖\n"
+        f"{lines}\n"
+        f"➖➖➖➖➖➖\n"
+        f"⏺️ Твое место - {position}"
     )
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("В меню", callback_data="main_menu"))
-    bot.send_message(chat_id, text, reply_markup=markup, parse_mode='HTML', disable_web_page_preview=True)
-    bot.answer_callback_query(call.id)
+    await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
+    await bot.send_message(
+        callback.message.chat.id,
+        text,
+        reply_markup=top_types_kb(),
+        disable_web_page_preview=True,
+    )
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'top_mmr')
-def show_top_mmr(call):
-    if is_message_old(call):
-        return
-    user_id, chat_id, username = resolve_user(call)
-    firstname = call.from_user.first_name
-    safe_delete_message(bot, chat_id, call.message.message_id)
+@router.callback_query(TopCB.filter(F.kind == "points"))
+async def show_top_points(callback: CallbackQuery, bot: Bot) -> None:
+    await _render_top(callback, bot, "points")
+    await callback.answer()
 
-    top_func = get_top_players(user_id, 10, order_col='mmr')
-    lines = '\n'.join(
-        f'{pos}. {name} - {get_league(mmr)} <em><b>{mmr} mmr</b></em>'
-        for pos, name, mmr in top_func['top']
-    )
-    user = top_func['user_position']
-    user_page = (
-        f'<b><a href="https://t.me/{username}">{firstname}</a></b>'
-        if username else f'<b>{firstname}</b>'
-    )
-    text = (
-        f'⚡ {user_page}, вот топ по арене сейчас: \n'
-        f'➖➖➖➖➖➖\n'
-        f'{lines}\n'
-        f'➖➖➖➖➖➖\n'
-        f'⏺️ Твое место - {user["position"]} '
-    )
-    markup = types.InlineKeyboardMarkup(row_width=1)
-    markup.add(types.InlineKeyboardButton("В меню", callback_data="main_menu"))
-    bot.send_message(chat_id, text, reply_markup=markup, parse_mode='HTML', disable_web_page_preview=True)
-    bot.answer_callback_query(call.id)
+
+@router.callback_query(TopCB.filter(F.kind == "rating"))
+async def show_top_rating(callback: CallbackQuery, bot: Bot) -> None:
+    await _render_top(callback, bot, "rating")
+    await callback.answer()
