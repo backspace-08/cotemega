@@ -1,161 +1,112 @@
-from pathlib import Path
-from bot_core import bot, resolve_user, logger
-from bot_core import is_message_old, safe_delete_message, loc_rarity
-from bot_core import get_type_char
-from bot_core import get_rarity_counts
-from bd_workers import get_character_data, count_user_characters
-from bd_workers import get_user_characters
-import telebot
-from telebot import types
+from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramBadRequest
+from aiogram.types import CallbackQuery
 
-ANIMATED_EXTENSIONS = {'.mp4', '.gif', '.webm'}
+from config import MAX_CHARACTER_LEVEL
+from core.callbacks import CharPageCB, LevelUpCB, MenuCB, RarityCB
+from core.keyboards import character_nav_kb, rarity_menu_kb
+from core.texts import RARITY_ORDER, character_caption
+from core.utils import edit_character_card, run_db, safe_delete_message, send_character_card
+from db.queries import (
+    get_owned_characters,
+    get_rarity_counts,
+    get_user_character,
+    get_user_rarity_counts,
+)
+from services.leveling import upgrade
+from services.locks import user_lock
 
-ANIMATED_EXTENSIONS = {'.mp4', '.gif', '.webm'}
+router = Router()
 
-def handle_view_chars(call, rarity):
-    if is_message_old(call):
+
+@router.callback_query(MenuCB.filter(F.action == "chars"))
+async def show_rarities(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+    user_counts = await run_db(get_user_rarity_counts, user_id)
+    total_counts = await run_db(get_rarity_counts)
+    await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
+    await bot.send_message(
+        callback.message.chat.id,
+        "Выберите редкость:",
+        reply_markup=rarity_menu_kb(user_counts, total_counts, has_special=bool(user_counts.get("special"))),
+    )
+    await callback.answer()
+
+
+def _card_keyboard(rarity: str, page: int, total_pages: int, char_id: int, level: int):
+    return character_nav_kb(
+        char_id=char_id, rarity=rarity, page=page, total_pages=total_pages, level=level
+    )
+
+
+async def _render_rarity(
+    callback: CallbackQuery, bot: Bot, user_id: int, rarity: str, page: int, edit: bool
+) -> None:
+    characters = await run_db(get_owned_characters, user_id, rarity)
+    if not characters:
+        await callback.answer("У вас нет персонажей этой редкости")
         return
-    try:
-        user_id, chat_id, username = resolve_user(call)
-        markup, caption, image_path = generate_character_keyboard(user_id, rarity)
-        if markup is None:
-            bot.answer_callback_query(call.id, caption)
-            return
-        if Path(image_path).suffix.lower() in ANIMATED_EXTENSIONS:
-            with open(image_path, 'rb') as file:
-                bot.send_animation(
-                    chat_id=chat_id,
-                    animation=file,
-                    caption=caption, parse_mode='HTML',
-                    reply_markup=markup)
-        else:
-            with open(image_path, 'rb') as photo:
-                bot.send_photo(
-                    chat_id=chat_id,
-                    photo=photo,
-                    caption=caption, parse_mode='HTML',
-                    reply_markup=markup)
-        safe_delete_message(bot, chat_id, call.message.message_id)
-    except ValueError:
-        chat_id = call.message.chat.id
-        bot.send_message(chat_id, 'У вас нет персонажей этой редкости')
-def generate_character_keyboard(user_id, rarity, page=0):
-    characters = get_user_characters(user_id, rarity)
-    char_list = list(characters.items())
-    total_pages = len(char_list)
-    if not char_list:
-        return None, "У вас пока нет персонажей"
-    char_name, char_data = get_character_data(page, user_id, rarity)
-    markup = types.InlineKeyboardMarkup()
-    nav_buttons = []
-    if page > 0:
-        nav_buttons.append(types.InlineKeyboardButton(
-            text="⬅️",
-            callback_data=f"charpage_{rarity}_{page-1}"))
-    nav_buttons.append(types.InlineKeyboardButton(
-        text=f"{page+1}/{total_pages}",
-        callback_data="current_page"))
-    if page < total_pages - 1:
-        nav_buttons.append(types.InlineKeyboardButton(
-            text="➡️",
-            callback_data=f"charpage_{rarity}_{page+1}"))
-    markup.row(*nav_buttons)
-    markup.row(types.InlineKeyboardButton(
-        text="↩ В меню редкостей",
-        callback_data="view_chars"))
-    try:
-        image_path = char_data.get('image')
-        caption = (
-            f"{get_type_char(char_data['type'])} {char_data['transl']}\n"
-            f"Редкость - {loc_rarity(char_data['rarity'])}\n"
-            f"<blockquote>├‣❤️ - {char_data['health']}\n"
-            f"├‣💪 - {char_data['attack']}\n</blockquote>")
-        return markup, caption, image_path
-    except KeyError:
-        caption = f"🎭 {char_name}"
-        image_path = char_data.get('image')
-        return markup, caption, image_path
-@bot.callback_query_handler(func=lambda call: call.data.startswith('view_chars_'))
-def handle_view_chars_by_rarity(call):
-    if is_message_old(call):
-        return
-    view, chars, action = call.data.split('_')
-    rarity = {
-        'basic': 'common',
-        'rare': 'rare',
-        'epic': 'epic',
-        'mythic': 'mythic',
-        'legendary': 'legendary',
-        'special': 'special',
-    }.get(action, 'common')
-    handle_view_chars(call, rarity)
-@bot.callback_query_handler(func=lambda call: call.data == 'view_chars')
-def handle_view_chars_rarities(call):
-    if is_message_old(call):
-        return
-    user_id, chat_id, username = resolve_user(call)
-    safe_delete_message(bot, chat_id, call.message.message_id)
-    user_basic = count_user_characters(user_id, rarity='common')
-    user_rare = count_user_characters(user_id, rarity='rare')
-    user_epic = count_user_characters(user_id, rarity='epic')
-    user_mythic = count_user_characters(user_id, rarity='mythic')
-    user_legendary = count_user_characters(user_id, rarity='legendary')
-    user_special = count_user_characters(user_id, rarity='special')
-    counts = get_rarity_counts()
-    markup=types.InlineKeyboardMarkup(row_width=1)
-    buttons=[types.InlineKeyboardButton(f"🩶 Обычные {user_basic}/{counts.get('common', 0)}", callback_data="view_chars_basic"),
-            types.InlineKeyboardButton(f"💙 Редкие {user_rare}/{counts.get('rare', 0)}", callback_data="view_chars_rare"),
-            types.InlineKeyboardButton(f"💜 Эпические {user_epic}/{counts.get('epic', 0)}", callback_data="view_chars_epic"),
-            types.InlineKeyboardButton(f"❤️ Мифические {user_mythic}/{counts.get('mythic', 0)}", callback_data="view_chars_mythic"),
-            types.InlineKeyboardButton(f"💛 Легендарные {user_legendary}/{counts.get('legendary', 0)}", callback_data="view_chars_legendary"),
-            types.InlineKeyboardButton(f"🤍 Специальные {user_special}", callback_data="view_chars_special"),
-            types.InlineKeyboardButton('↩️ В меню',callback_data='main_menu')]
-    specials=get_user_characters(user_id,rarity='special')
-    if not specials:
-        buttons_to_show = buttons[:-2] + [buttons[-1]]
-        for btn in buttons_to_show:
-            markup.add(btn)
-        bot.send_message(chat_id,f'Выберите редкость:',reply_markup=markup)
-        bot.answer_callback_query(call.id)
+
+    page %= len(characters)
+    card = characters[page]
+    markup = _card_keyboard(rarity, page, len(characters), card.char_id, card.level)
+    caption = character_caption(card)
+
+    if edit:
+        await edit_character_card(
+            bot, callback.message.chat.id, callback.message.message_id, card.image_path, caption, markup
+        )
     else:
-        markup.add(*buttons)
-        bot.send_message(chat_id,f'Выберите редкость:',reply_markup=markup)
-        bot.answer_callback_query(call.id)
-@bot.callback_query_handler(func=lambda call: call.data.startswith('charpage_'))
-def handle_view_charpage(call):
-    if is_message_old(call):
+        await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
+        await send_character_card(bot, callback.message.chat.id, card.image_path, caption, markup)
+    await callback.answer()
+
+
+@router.callback_query(RarityCB.filter())
+async def show_rarity(callback: CallbackQuery, callback_data: RarityCB, bot: Bot, user_id: int) -> None:
+    if callback_data.rarity not in RARITY_ORDER:
+        await callback.answer("Неизвестная редкость")
         return
+    await _render_rarity(callback, bot, user_id, callback_data.rarity, page=0, edit=False)
+
+
+@router.callback_query(CharPageCB.filter())
+async def show_char_page(callback: CallbackQuery, callback_data: CharPageCB, bot: Bot, user_id: int) -> None:
+    await _render_rarity(callback, bot, user_id, callback_data.rarity, callback_data.page, edit=True)
+
+
+@router.callback_query(LevelUpCB.filter())
+async def handle_level_up(
+    callback: CallbackQuery, callback_data: LevelUpCB, bot: Bot, user_id: int
+) -> None:
+    async with user_lock(user_id):
+        result = await run_db(upgrade, user_id, callback_data.char_id)
+
+    if result.status == "insufficient":
+        await callback.answer(f"Недостаточно осколков: нужно {result.cost}🔮", show_alert=True)
+        return
+    if result.status == "max":
+        await callback.answer("Уже максимальный уровень", show_alert=True)
+        return
+    if result.status != "ok":
+        await callback.answer("Не удалось улучшить персонажа", show_alert=True)
+        return
+
+    card = await run_db(get_user_character, user_id, callback_data.char_id)
+    if card is None:
+        await callback.answer("Персонаж не найден", show_alert=True)
+        return
+
+    characters = await run_db(get_owned_characters, user_id, callback_data.rarity)
+    page = next((i for i, c in enumerate(characters) if c.char_id == card.char_id), 0)
+    markup = _card_keyboard(callback_data.rarity, page, len(characters), card.char_id, card.level)
+
     try:
-        parts = call.data.split('_')
-        if len(parts) != 3:
-            raise ValueError("Некорректный формат callback_data")
-        _, rarity, page_str = parts
-        page = int(page_str)
-        user_id, chat_id, username = resolve_user(call)
-        markup, caption, image_path = generate_character_keyboard(user_id, rarity, page)
-        if Path(image_path).suffix.lower() in ANIMATED_EXTENSIONS:
-            with open(image_path, 'rb') as file:
-                bot.edit_message_media(
-                    chat_id=chat_id,
-                    message_id=call.message.message_id,
-                    media=types.InputMediaVideo(file, caption=caption, parse_mode='HTML'),
-                    reply_markup=markup)
-        else:
-            with open(image_path, 'rb') as photo:
-                bot.edit_message_media(
-                    chat_id=chat_id,
-                    message_id=call.message.message_id,
-                    media=types.InputMediaPhoto(photo, caption=caption, parse_mode='HTML'),
-                    reply_markup=markup)
-        bot.answer_callback_query(call.id)
-    except ValueError as e:
-        logger.error(f"Ошибка разбора callback_data: {e}")
-        bot.answer_callback_query(call.id, "⚠️ Ошибка: неверный формат запроса")
-    except Exception as e:
-        logger.error(f"Ошибка в handle_view_charpage: {e}")
-        bot.answer_callback_query(call.id, "⚠️ Произошла ошибка")
-@bot.callback_query_handler(func=lambda call: call.data == 'current_page')
-def handle_current_page(call):
-    if is_message_old(call):
-        return
-    bot.answer_callback_query(call.id, "Текущая страница")
+        await bot.edit_message_caption(
+            chat_id=callback.message.chat.id,
+            message_id=callback.message.message_id,
+            caption=character_caption(card),
+            reply_markup=markup,
+        )
+    except TelegramBadRequest:
+        pass
+    await callback.answer(f"Уровень повышен до {card.level}/{MAX_CHARACTER_LEVEL}!")
