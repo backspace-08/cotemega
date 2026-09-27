@@ -35,6 +35,8 @@ DATABASE_URL = os.getenv('DATABASE_URL',
 WEBHOOK_LISTEN = os.getenv('WEBHOOK_LISTEN', '0.0.0.0')
 WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '9080'))
 
+REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
+
 PRICES = """
 🧾 <b>Информация о донатах</b>
 💵 <b>Курс</b>
@@ -105,6 +107,48 @@ ANIMATED_EXTENSIONS = {'.gif', '.mp4', '.webm'}
 SHARD_MAP = {
     'common': 1, 'rare': 3, 'epic': 10,
     'mythic': 20, 'legendary': 100
+}
+
+# ── Арена ──
+ARENA_TURN_TIMEOUT = 60            # секунд на ход
+ARENA_CALIBRATION_MATCHES = 10     # матчей до показа рейтинга
+ARENA_MIN_MATCHES_FOR_REWARD = 10  # минимум матчей за сезон для награды
+ARENA_DECAY_START_DAYS = 3         # простой до начала decay
+ARENA_DECAY_PERCENT = 0.01         # % от (rating - center) в день
+ARENA_DECAY_MIN = 10               # минимум снижения в день
+ARENA_RESET_K = 0.5                # soft reset к центру
+ARENA_RESET_RD_FLOOR = 200.0       # минимальный RD при reset
+ARENA_RATING_CENTER = 1000         # якорь шкалы Glicko-2
+ARENA_SEASON_WEEKS = int(os.getenv('ARENA_SEASON_WEEKS', '3'))  # длина сезона
+START_SPINS = int(os.getenv('START_SPINS', '10'))               # стартовые крутки (новичок / после сброса)
+FULL_RESET_PHRASE = os.getenv('FULL_RESET_PHRASE', 'ПОЛНАЯ_ОТЧИСТКА')
+
+# Приватная 1v1 CFR-таблица (не в гите; копируется вручную/на сервере)
+CFR_TABLE_PATH = os.getenv(
+    'CFR_TABLE_PATH',
+    os.path.join(os.path.dirname(os.path.abspath(__file__)), 'cote_cfr', '1v1_table.csv'),
+)
+
+# PvE / CFR
+CFR_ENABLED = os.getenv('CFR_ENABLED', '1').lower() not in ('0', 'false', 'no')
+CFR_DEPTH = int(os.getenv('CFR_DEPTH', '3'))
+CFR_ITERS = int(os.getenv('CFR_ITERS', '120'))
+CFR_CAP = int(os.getenv('CFR_CAP', '6'))
+# Max simultaneous solver runs (bounded CPU spikes; leave cores for other services).
+CFR_MAX_CONCURRENCY = int(os.getenv('CFR_MAX_CONCURRENCY', '1'))
+# Max concurrent PvE matches (0 = unlimited). Bounds memory + sustained load.
+CFR_MAX_ACTIVE = int(os.getenv('CFR_MAX_ACTIVE', '0'))
+
+# ── Прокачка персонажей ──
+MAX_CHARACTER_LEVEL = 10
+# Полная стоимость прокачки карты с 1 до MAX_CHARACTER_LEVEL, в осколках.
+CHARACTER_LEVEL_COST = {
+    'common': 400,
+    'rare': 800,
+    'epic': 1350,
+    'mythic': 2160,
+    'legendary': 3600,
+    'special': 3600,
 }
 
 
