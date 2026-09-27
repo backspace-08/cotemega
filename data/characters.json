@@ -8,7 +8,8 @@
       "name_ru": "Ан Маедзоно",
       "type": 2,
       "health": 3200,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "female"
     },
     {
       "id": 2,
@@ -18,7 +19,8 @@
       "name_ru": "Чихиро Ширанами",
       "type": 4,
       "health": 3100,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 3,
@@ -28,7 +30,8 @@
       "name_ru": "Эми Тамия",
       "type": 3,
       "health": 3200,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "female"
     },
     {
       "id": 4,
@@ -38,7 +41,8 @@
       "name_ru": "Харуки Ямаучи",
       "type": 2,
       "health": 3300,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 5,
@@ -48,7 +52,8 @@
       "name_ru": "Хидео Сотомура",
       "type": 3,
       "health": 3300,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 6,
@@ -58,7 +63,8 @@
       "name_ru": "Кента Йошида",
       "type": 2,
       "health": 3200,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 7,
@@ -68,7 +74,8 @@
       "name_ru": "Коджи Мачида",
       "type": 1,
       "health": 3300,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 8,
@@ -78,7 +85,8 @@
       "name_ru": "Кокоро Иногашира",
       "type": 4,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 9,
@@ -88,7 +96,8 @@
       "name_ru": "Козуэ Минамиката",
       "type": 4,
       "health": 3200,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "female"
     },
     {
       "id": 10,
@@ -98,7 +107,8 @@
       "name_ru": "Кёго Комия",
       "type": 3,
       "health": 3100,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 11,
@@ -108,7 +118,8 @@
       "name_ru": "Кёске Окитани",
       "type": 2,
       "health": 3100,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 12,
@@ -118,7 +129,8 @@
       "name_ru": "Макото Сумида",
       "type": 4,
       "health": 3100,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 13,
@@ -128,7 +140,8 @@
       "name_ru": "Минори Киношита",
       "type": 2,
       "health": 3200,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 14,
@@ -138,7 +151,8 @@
       "name_ru": "Момоко Икари",
       "type": 1,
       "health": 3000,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "female"
     },
     {
       "id": 15,
@@ -148,7 +162,8 @@
       "name_ru": "Нене Мори",
       "type": 4,
       "health": 3200,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 16,
@@ -158,7 +173,8 @@
       "name_ru": "Норихито Ватанабе",
       "type": 4,
       "health": 3200,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 17,
@@ -168,7 +184,8 @@
       "name_ru": "Рео Кондо",
       "type": 2,
       "health": 3100,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 18,
@@ -178,7 +195,8 @@
       "name_ru": "Рика Морофуджи",
       "type": 3,
       "health": 3300,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 19,
@@ -188,7 +206,8 @@
       "name_ru": "Рётаро Хондо",
       "type": 2,
       "health": 3100,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 20,
@@ -198,7 +217,8 @@
       "name_ru": "Саки Ямашита",
       "type": 4,
       "health": 1400,
-      "attack": 500
+      "attack": 500,
+      "gender": "female"
     },
     {
       "id": 21,
@@ -208,7 +228,8 @@
       "name_ru": "Сацуки Шинохара",
       "type": 2,
       "health": 3200,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "female"
     },
     {
       "id": 22,
@@ -218,7 +239,8 @@
       "name_ru": "Сайо Андо",
       "type": 2,
       "health": 3100,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "female"
     },
     {
       "id": 23,
@@ -228,7 +250,8 @@
       "name_ru": "Шихо Манабе",
       "type": 2,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 24,
@@ -238,7 +261,8 @@
       "name_ru": "Соши Миямото",
       "type": 3,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 25,
@@ -248,7 +272,8 @@
       "name_ru": "Сусуму Морияма",
       "type": 3,
       "health": 3000,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 26,
@@ -258,7 +283,8 @@
       "name_ru": "Тецуя Хамагучи",
       "type": 3,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 27,
@@ -268,7 +294,8 @@
       "name_ru": "Ватару Иджуин",
       "type": 3,
       "health": 3000,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "male"
     },
     {
       "id": 28,
@@ -278,7 +305,8 @@
       "name_ru": "Яхико Тоцука",
       "type": 3,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 29,
@@ -288,7 +316,8 @@
       "name_ru": "Юме Кобаши",
       "type": 3,
       "health": 3300,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 30,
@@ -298,7 +327,8 @@
       "name_ru": "Айри Сакура",
       "type": 4,
       "health": 3900,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "female"
     },
     {
       "id": 31,
@@ -308,7 +338,8 @@
       "name_ru": "Акито Мияке",
       "type": 2,
       "health": 3700,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "male"
     },
     {
       "id": 32,
@@ -318,7 +349,8 @@
       "name_ru": "Альберт Ямада",
       "type": 2,
       "health": 3800,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "male"
     },
     {
       "id": 33,
@@ -328,7 +360,8 @@
       "name_ru": "Даичи Ишизаки",
       "type": 2,
       "health": 3600,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "male"
     },
     {
       "id": 34,
@@ -338,7 +371,8 @@
       "name_ru": "Харука Хасебе",
       "type": 4,
       "health": 3700,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "female"
     },
     {
       "id": 35,
@@ -348,7 +382,8 @@
       "name_ru": "Хаято Кито",
       "type": 2,
       "health": 3500,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "male"
     },
     {
       "id": 36,
@@ -358,7 +393,8 @@
       "name_ru": "Хироя Токито",
       "type": 1,
       "health": 3800,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "male"
     },
     {
       "id": 37,
@@ -368,7 +404,8 @@
       "name_ru": "Иккей Шимазаки",
       "type": 3,
       "health": 3500,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "male"
     },
     {
       "id": 38,
@@ -378,7 +415,8 @@
       "name_ru": "Каяно Онодера",
       "type": 2,
       "health": 3600,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "female"
     },
     {
       "id": 39,
@@ -388,7 +426,8 @@
       "name_ru": "Косей Санада",
       "type": 1,
       "health": 3700,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "male"
     },
     {
       "id": 40,
@@ -398,7 +437,8 @@
       "name_ru": "Мако Амикура",
       "type": 4,
       "health": 3800,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "female"
     },
     {
       "id": 41,
@@ -408,7 +448,8 @@
       "name_ru": "Майя Сато",
       "type": 4,
       "health": 3700,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "female"
     },
     {
       "id": 42,
@@ -418,7 +459,8 @@
       "name_ru": "Мей-Ю Ван",
       "type": 3,
       "health": 3700,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "female"
     },
     {
       "id": 43,
@@ -428,7 +470,8 @@
       "name_ru": "Мики Ямамура",
       "type": 3,
       "health": 3500,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "female"
     },
     {
       "id": 44,
@@ -438,7 +481,8 @@
       "name_ru": "Рёко Нишикава",
       "type": 1,
       "health": 3800,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "female"
     },
     {
       "id": 45,
@@ -448,7 +492,8 @@
       "name_ru": "Сатору Канеда",
       "type": 3,
       "health": 3900,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "male"
     },
     {
       "id": 46,
@@ -458,7 +503,8 @@
       "name_ru": "Со Шибата",
       "type": 4,
       "health": 3600,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "male"
     },
     {
       "id": 47,
@@ -468,7 +514,8 @@
       "name_ru": "Такеко Нишино",
       "type": 4,
       "health": 3500,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "female"
     },
     {
       "id": 48,
@@ -478,7 +525,8 @@
       "name_ru": "Терухико Юкимура",
       "type": 3,
       "health": 2100,
-      "attack": 700
+      "attack": 700,
+      "gender": "male"
     },
     {
       "id": 49,
@@ -488,7 +536,8 @@
       "name_ru": "Юки Химено",
       "type": 3,
       "health": 3800,
-      "attack": 1200
+      "attack": 1200,
+      "gender": "female"
     },
     {
       "id": 50,
@@ -498,7 +547,8 @@
       "name_ru": "Ай Моришита",
       "type": 1,
       "health": 4300,
-      "attack": 1400
+      "attack": 1400,
+      "gender": "female"
     },
     {
       "id": 51,
@@ -508,7 +558,8 @@
       "name_ru": "Акане Тачибана",
       "type": 3,
       "health": 4200,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "female"
     },
     {
       "id": 52,
@@ -518,7 +569,8 @@
       "name_ru": "Асука Шираиши",
       "type": 4,
       "health": 2800,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 53,
@@ -528,7 +580,8 @@
       "name_ru": "Чиаки Мацушита",
       "type": 1,
       "health": 4400,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "female"
     },
     {
       "id": 54,
@@ -538,7 +591,8 @@
       "name_ru": "Хиёри Шиина",
       "type": 4,
       "health": 4300,
-      "attack": 1400
+      "attack": 1400,
+      "gender": "female"
     },
     {
       "id": 55,
@@ -548,7 +602,8 @@
       "name_ru": "Икуто Кирияма",
       "type": 3,
       "health": 4200,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "male"
     },
     {
       "id": 56,
@@ -558,7 +613,8 @@
       "name_ru": "Кадзуоми Хосен",
       "type": 2,
       "health": 4200,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "male"
     },
     {
       "id": 57,
@@ -568,7 +624,8 @@
       "name_ru": "Кей Каруизава",
       "type": 4,
       "health": 4300,
-      "attack": 1400
+      "attack": 1400,
+      "gender": "female"
     },
     {
       "id": 58,
@@ -578,7 +635,8 @@
       "name_ru": "Кен Судо",
       "type": 2,
       "health": 4300,
-      "attack": 1400
+      "attack": 1400,
+      "gender": "male"
     },
     {
       "id": 59,
@@ -588,7 +646,8 @@
       "name_ru": "Кикё Кушида",
       "type": 1,
       "health": 3100,
-      "attack": 1100
+      "attack": 1100,
+      "gender": "female"
     },
     {
       "id": 60,
@@ -598,7 +657,8 @@
       "name_ru": "Кохей Кацураги",
       "type": 3,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 61,
@@ -608,7 +668,8 @@
       "name_ru": "Кё Ишигами",
       "type": 3,
       "health": 4300,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "male"
     },
     {
       "id": 62,
@@ -618,7 +679,8 @@
       "name_ru": "Масаёши Хашимото",
       "type": 1,
       "health": 2800,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 63,
@@ -628,7 +690,8 @@
       "name_ru": "Масуми Камуро",
       "type": 2,
       "health": 4500,
-      "attack": 1400
+      "attack": 1400,
+      "gender": "female"
     },
     {
       "id": 64,
@@ -638,7 +701,8 @@
       "name_ru": "Мио Ибуки",
       "type": 2,
       "health": 4500,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "female"
     },
     {
       "id": 65,
@@ -648,7 +712,8 @@
       "name_ru": "Надзуна Асахина",
       "type": 4,
       "health": 4200,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "female"
     },
     {
       "id": 66,
@@ -658,7 +723,8 @@
       "name_ru": "Рику Утомия",
       "type": 1,
       "health": 4300,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "male"
     },
     {
       "id": 67,
@@ -668,7 +734,8 @@
       "name_ru": "Рюджи Канзаки",
       "type": 2,
       "health": 4200,
-      "attack": 1500
+      "attack": 1500,
+      "gender": "male"
     },
     {
       "id": 68,
@@ -678,7 +745,8 @@
       "name_ru": "Сакурако Цубаки",
       "type": 3,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "female"
     },
     {
       "id": 69,
@@ -688,7 +756,8 @@
       "name_ru": "Йосуке Хирата",
       "type": 4,
       "health": 3000,
-      "attack": 1000
+      "attack": 1000,
+      "gender": "male"
     },
     {
       "id": 70,
@@ -698,7 +767,8 @@
       "name_ru": "Арису Сакаянаги",
       "type": 1,
       "health": 6000,
-      "attack": 2000
+      "attack": 2000,
+      "gender": "female"
     },
     {
       "id": 71,
@@ -708,7 +778,8 @@
       "name_ru": "Чие Хошиномия",
       "type": 2,
       "health": 3800,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "female"
     },
     {
       "id": 72,
@@ -718,7 +789,8 @@
       "name_ru": "Фука Кирюин",
       "type": 2,
       "health": 5300,
-      "attack": 1600
+      "attack": 1600,
+      "gender": "female"
     },
     {
       "id": 73,
@@ -728,7 +800,8 @@
       "name_ru": "Хонами Ичиносе",
       "type": 4,
       "health": 5900,
-      "attack": 1900
+      "attack": 1900,
+      "gender": "female"
     },
     {
       "id": 74,
@@ -738,7 +811,8 @@
       "name_ru": "Какеру Рьюен",
       "type": 2,
       "health": 6000,
-      "attack": 2000
+      "attack": 2000,
+      "gender": "male"
     },
     {
       "id": 75,
@@ -748,7 +822,8 @@
       "name_ru": "Кацунори Шиба",
       "type": 1,
       "health": 5300,
-      "attack": 1700
+      "attack": 1700,
+      "gender": "male"
     },
     {
       "id": 76,
@@ -758,7 +833,8 @@
       "name_ru": "Казума Сакагами",
       "type": 3,
       "health": 5100,
-      "attack": 1700
+      "attack": 1700,
+      "gender": "male"
     },
     {
       "id": 77,
@@ -768,7 +844,8 @@
       "name_ru": "Манабу Хорикита",
       "type": 4,
       "health": 4400,
-      "attack": 1300
+      "attack": 1300,
+      "gender": "male"
     },
     {
       "id": 78,
@@ -778,7 +855,8 @@
       "name_ru": "Мияби Нагумо",
       "type": 1,
       "health": 5200,
-      "attack": 1700
+      "attack": 1700,
+      "gender": "male"
     },
     {
       "id": 79,
@@ -788,7 +866,8 @@
       "name_ru": "Нарумори Сакаянаги",
       "type": 3,
       "health": 5200,
-      "attack": 1800
+      "attack": 1800,
+      "gender": "male"
     },
     {
       "id": 80,
@@ -798,7 +877,8 @@
       "name_ru": "Саэ Чабашира",
       "type": 3,
       "health": 5200,
-      "attack": 1700
+      "attack": 1700,
+      "gender": "female"
     },
     {
       "id": 81,
@@ -808,7 +888,8 @@
       "name_ru": "Сузуне Хорикита",
       "type": 3,
       "health": 6000,
-      "attack": 2000
+      "attack": 2000,
+      "gender": "female"
     },
     {
       "id": 82,
@@ -818,7 +899,8 @@
       "name_ru": "Томонари Машима",
       "type": 4,
       "health": 5300,
-      "attack": 1800
+      "attack": 1800,
+      "gender": "male"
     },
     {
       "id": 83,
@@ -828,7 +910,8 @@
       "name_ru": "Цубаса Нанасе",
       "type": 4,
       "health": 4300,
-      "attack": 1400
+      "attack": 1400,
+      "gender": "female"
     },
     {
       "id": 84,
@@ -838,7 +921,8 @@
       "name_ru": "Ацуоми Аянокоджи",
       "type": 1,
       "health": 6500,
-      "attack": 2000
+      "attack": 2000,
+      "gender": "male"
     },
     {
       "id": 85,
@@ -848,7 +932,8 @@
       "name_ru": "Ичика Амасава",
       "type": 2,
       "health": 6200,
-      "attack": 2000
+      "attack": 2000,
+      "gender": "female"
     },
     {
       "id": 86,
@@ -858,7 +943,8 @@
       "name_ru": "Киётака Аянокоджи",
       "type": 1,
       "health": 6000,
-      "attack": 2000
+      "attack": 2000,
+      "gender": "male"
     },
     {
       "id": 87,
@@ -868,7 +954,8 @@
       "name_ru": "Президент Коенджи",
       "type": 2,
       "health": 5200,
-      "attack": 1700
+      "attack": 1700,
+      "gender": "male"
     },
     {
       "id": 88,
@@ -878,7 +965,8 @@
       "name_ru": "Премьер-Министр Киджима",
       "type": 4,
       "health": 5200,
-      "attack": 1700
+      "attack": 1700,
+      "gender": "male"
     },
     {
       "id": 89,
@@ -888,7 +976,8 @@
       "name_ru": "Рокусуке Коенджи",
       "type": 2,
       "health": 5900,
-      "attack": 1900
+      "attack": 1900,
+      "gender": "male"
     },
     {
       "id": 90,
@@ -898,7 +987,8 @@
       "name_ru": "Широ",
       "type": 3,
       "health": 6000,
-      "attack": 2100
+      "attack": 2100,
+      "gender": "male"
     },
     {
       "id": 91,
@@ -908,7 +998,8 @@
       "name_ru": "Такуя Ягами",
       "type": 3,
       "health": 5700,
-      "attack": 2000
+      "attack": 2000,
+      "gender": "male"
     },
     {
       "id": 92,
@@ -918,7 +1009,8 @@
       "name_ru": "Токинари Цукиширо",
       "type": 1,
       "health": 6200,
-      "attack": 1900
+      "attack": 1900,
+      "gender": "male"
     },
     {
       "id": 93,
@@ -928,98 +1020,138 @@
       "name_ru": "Юки",
       "type": 4,
       "health": 5700,
-      "attack": 2100
+      "attack": 2100,
+      "gender": "female"
     },
     {
       "id": 94,
       "filename": "amasawa_temzz.jpg",
       "rarity": "special",
       "name_en": "Amasawa Temzz",
-      "name_ru": "amasawa_temzz"
+      "name_ru": "amasawa_temzz",
+      "gender": "female",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 95,
       "filename": "arena_special1.jpg",
       "rarity": "special",
       "name_en": "Arena Special1",
-      "name_ru": "arena_special1"
+      "name_ru": "arena_special1",
+      "gender": "unknown",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 96,
       "filename": "ayano_diman.jpg",
       "rarity": "special",
       "name_en": "Ayano Diman",
-      "name_ru": "ayano_diman"
+      "name_ru": "ayano_diman",
+      "gender": "unknown",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 97,
       "filename": "ayano_product.jpg",
       "rarity": "special",
       "name_en": "Ayano Product",
-      "name_ru": "ayano_product"
+      "name_ru": "ayano_product",
+      "gender": "unknown",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 98,
       "filename": "ayano_ryuen_popcorn.jpg",
       "rarity": "special",
       "name_en": "Ayano Ryuen Popcorn",
-      "name_ru": "ayano_ryuen_popcorn"
+      "name_ru": "ayano_ryuen_popcorn",
+      "gender": "unknown",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 99,
       "filename": "ayano_unpretty.jpg",
       "rarity": "special",
       "name_en": "Ayano Unpretty",
-      "name_ru": "ayano_unpretty"
+      "name_ru": "ayano_unpretty",
+      "gender": "unknown",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 100,
       "filename": "kei_vertigo.jpg",
       "rarity": "special",
       "name_en": "Kei Vertigo",
-      "name_ru": "kei_vertigo"
+      "name_ru": "kei_vertigo",
+      "gender": "female",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 101,
       "filename": "koenji_product.jpg",
       "rarity": "special",
       "name_en": "Koenji Product",
-      "name_ru": "koenji_product"
+      "name_ru": "koenji_product",
+      "gender": "male",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 102,
       "filename": "kushida_ramazan.jpg",
       "rarity": "special",
       "name_en": "Kushida Ramazan",
-      "name_ru": "kushida_ramazan"
+      "name_ru": "kushida_ramazan",
+      "gender": "female",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 103,
       "filename": "shiina_senpui.jpg",
       "rarity": "special",
       "name_en": "Shiina Senpui",
-      "name_ru": "shiina_senpui"
+      "name_ru": "shiina_senpui",
+      "gender": "female",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 104,
       "filename": "suzune_kgb.jpg",
       "rarity": "special",
       "name_en": "Suzune Kgb",
-      "name_ru": "suzune_kgb"
+      "name_ru": "suzune_kgb",
+      "gender": "female",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 105,
       "filename": "suzune_mio_popcorn.jpg",
       "rarity": "special",
       "name_en": "Suzune Mio Popcorn",
-      "name_ru": "suzune_mio_popcorn"
+      "name_ru": "suzune_mio_popcorn",
+      "gender": "female",
+      "health": 6000,
+      "attack": 2000
     },
     {
       "id": 106,
       "filename": "suzune_popcorn.jpg",
       "rarity": "special",
       "name_en": "Suzune Popcorn",
-      "name_ru": "suzune_popcorn"
+      "name_ru": "suzune_popcorn",
+      "gender": "female",
+      "health": 6000,
+      "attack": 2000
     }
   ]
 }
