@@ -2,6 +2,16 @@
 __pycache__/
 *.pyc
 bot_errors.log
+cfr_metrics.log*
 arena_battles.json
 venv/
 .vscode
+
+# Private 1v1 CFR table (exclusive) and Rust build artifacts
+cote_cfr/1v1_table.csv
+cote_cfr/1v1_table_old.csv
+cote_cfr/1v1_table_new.csv
+cote_cfr/target/
+cote_cfr/Cargo.lock
+cote_cfr/*.so
+*.so
