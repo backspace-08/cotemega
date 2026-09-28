@@ -48,6 +48,17 @@ async def main() -> None:
     setup_logging()
     init_db()
     setup_dispatcher()
+
+    # Cancel any battles left over from before the restart (no rating change).
+    from features.arena.maintenance import reset_active_matches
+
+    try:
+        result = await reset_active_matches(bot, notify=True)
+        if result["matches"]:
+            logger.info(f"Startup: cancelled {result['matches']} arena matches")
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Startup arena reset failed: {e}")
+
     asyncio.create_task(_season_watcher(bot))
 
     if WEBHOOK_URL:

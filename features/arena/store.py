@@ -161,3 +161,37 @@ class MatchStore:
             pipe.delete(_user_key(record.player1))
             pipe.delete(_user_key(record.player2))
             await pipe.execute()
+
+
+async def clear_matches(only: str | None = None) -> list[dict]:
+    """Delete active matches and their indexes. `only`: 'pvp' | 'pve' | None.
+
+    Returns the removed matches so callers can cancel timers, drop bot
+    instances and notify players. Does NOT touch any ratings.
+    """
+    redis = get_redis()
+    removed: list[dict] = []
+
+    async for key in redis.scan_iter(match="arena:match:*"):
+        data = await redis.hgetall(key)
+        vs_bot = data.get("vs_bot") == "1"
+        if only == "pve" and not vs_bot:
+            continue
+        if only == "pvp" and vs_bot:
+            continue
+        match_id = key.split(":", 2)[2]
+        player1 = int(data.get("player1") or 0)
+        player2 = int(data.get("player2") or 0)
+        removed.append(
+            {"match_id": match_id, "player1": player1, "player2": player2, "vs_bot": vs_bot}
+        )
+        await redis.delete(key)
+        await redis.delete(_user_key(player1))
+        await redis.delete(_user_key(player2))
+
+    if only in (None, "pvp"):
+        await redis.delete("arena:queue")
+        async for key in redis.scan_iter(match="arena:searchmsg:*"):
+            await redis.delete(key)
+
+    return removed

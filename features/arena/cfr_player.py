@@ -55,6 +55,15 @@ def active_count() -> int:
     return len(_players)
 
 
+def drop_players(match_ids) -> None:
+    for match_id in match_ids:
+        _players.pop(match_id, None)
+
+
+def drop_all() -> None:
+    _players.clear()
+
+
 async def prune_stale() -> int:
     """Drop bot instances whose match no longer exists in Redis (abandoned)."""
     from features.arena.store import MatchStore

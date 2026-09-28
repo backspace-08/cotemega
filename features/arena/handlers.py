@@ -5,13 +5,20 @@ import random
 from pathlib import Path
 
 from aiogram import Bot, F, Router
+from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from config import ARENA_CALIBRATION_MATCHES, ARENA_TURN_TIMEOUT, CFR_MAX_ACTIVE
 from core.callbacks import ArenaCB, BattleCB, MenuCB
 from core.logger import logger
-from core.utils import run_db, safe_delete_message, send_character_card, show_main_menu
+from core.utils import (
+    run_db,
+    safe_delete_message,
+    safe_edit_text,
+    send_character_card,
+    show_main_menu,
+)
 from db.queries import (
     count_ranked_users,
     get_all_character_bases,
@@ -449,6 +456,19 @@ def _cancel_timer(match_id: str) -> None:
         task.cancel()
 
 
+def cancel_timers(match_ids=None) -> None:
+    """Cancel turn timers for the given matches (or all when None)."""
+    if match_ids is None:
+        for task in _timers.values():
+            task.cancel()
+        _timers.clear()
+        return
+    for match_id in match_ids:
+        task = _timers.pop(match_id, None)
+        if task:
+            task.cancel()
+
+
 async def _clear_message(bot: Bot, chat_id: int, message_id: int) -> None:
     """Delete a message, or at least strip its keyboard if deletion fails."""
     if await safe_delete_message(bot, chat_id, message_id):
@@ -557,7 +577,10 @@ async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot:
         if not switch_targets(record):
             await callback.answer("Смена недоступна", show_alert=True)
             return
-        await callback.message.edit_reply_markup(reply_markup=switch_kb(record, user_id))
+        try:
+            await callback.message.edit_reply_markup(reply_markup=switch_kb(record, user_id))
+        except TelegramBadRequest:
+            pass
         await callback.answer()
         return
     elif action == "switchto":
@@ -569,8 +592,9 @@ async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot:
         card = record.cards_for(user_id)[callback_data.value]
         await _send_switch_media(bot, record, user_id, record.opponent_of[user_id], card)
     elif action == "back":
-        await callback.message.edit_text(
-            turn_status(record, user_id), reply_markup=battle_kb(record, user_id)
+        await safe_edit_text(
+            bot, callback.message.chat.id, callback.message.message_id,
+            turn_status(record, user_id), battle_kb(record, user_id),
         )
         await callback.answer()
         return
@@ -585,8 +609,9 @@ async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot:
         return
 
     await store.save(record)
-    await callback.message.edit_text(
-        turn_status(record, user_id), reply_markup=battle_kb(record, user_id)
+    await safe_edit_text(
+        bot, callback.message.chat.id, callback.message.message_id,
+        turn_status(record, user_id), battle_kb(record, user_id),
     )
     await callback.answer()
 
