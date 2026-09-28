@@ -11,7 +11,12 @@ from config import (
     ADMIN_ID,
     CFR_MAX_ACTIVE,
     CFR_MAX_CONCURRENCY,
+    CLEAR_PVE_PHRASE,
+    CLEAR_PVP_PHRASE,
     FULL_RESET_PHRASE,
+    RESET_ARENA_PHRASE,
+    RESET_BOT_PHRASE,
+    SEASON_END_PHRASE,
     START_SPINS,
 )
 from core.callbacks import AdminShardsCB
@@ -29,8 +34,11 @@ from db.queries import (
     get_username,
     grant_character,
     reset_all_progress,
+    reset_all_ratings,
+    reset_bot_stats,
     update_currency,
 )
+from features.arena.maintenance import reset_active_matches
 
 router = Router()
 
@@ -42,7 +50,7 @@ class AdminForm(StatesGroup):
     shards_description = State()
     give_char_id = State()
     all_currency_amount = State()
-    full_reset_confirm = State()
+    confirm_action = State()
 
 
 def is_admin(event: Message | CallbackQuery) -> bool:
@@ -222,11 +230,16 @@ ADMIN_COMMANDS_TEXT = (
     "/give_shards — выдать осколки одному игроку (кнопки или вручную + описание)\n"
     "/give_char — выдать себе персонажа по ID из БД\n"
     "/give_all — выдать валюту ВСЕМ (например «500» = осколки, «500 spins», «500 super_spins»)\n"
-    "/full_reset — полная отчистка прогресса всех игроков (с подтверждением)\n"
+    "/clear_pvp — отменить все текущие PvP-бои (рейтинг не меняется)\n"
+    "/clear_pve — отменить все текущие PvE-бои (рейтинг не меняется)\n"
+    "/reset_bot — сброс рейтинга/переменных бота + отмена PvE-боёв\n"
+    "/reset_arena — хард-ресет рейтинга всех игроков + отмена PvP-боёв\n"
     "/season_end — закрыть сезон арены: награды + soft reset + новый сезон\n"
+    "/full_reset — полная отчистка прогресса всех игроков\n"
     "/cfr_stats — нагрузка CFR, рейтинг и винрейт бота\n"
     "/cfr_bench [N] — бенч параллельных решений и памяти\n"
-    "/cfr_selftest — проверка CFR против случайной политики"
+    "/cfr_selftest — проверка CFR против случайной политики\n"
+    "Все опасные команды требуют ввода фразы подтверждения."
 )
 
 
@@ -281,31 +294,113 @@ async def give_all_amount(message: Message, state: FSMContext, bot: Bot) -> None
 
 
 # ──────────────────────────────────────────────
-# /full_reset
+# Опасные команды с подтверждением фразой
 # ──────────────────────────────────────────────
 
-@router.message(Command("full_reset"), is_admin)
-async def full_reset_start(message: Message, state: FSMContext) -> None:
-    await state.set_state(AdminForm.full_reset_confirm)
+async def _ask_confirm(message: Message, state: FSMContext, action: str, phrase: str, prompt: str) -> None:
+    await state.set_state(AdminForm.confirm_action)
+    await state.update_data(action=action, phrase=phrase)
     await message.answer(
-        "⚠️ <b>Полная отчистка</b> удалит у ВСЕХ:\n"
-        "очки, рейтинг, осколки, крутки, персонажей, инвентарь, колоды и стату арены.\n"
-        f"Аккаунты останутся. Круток будет {START_SPINS}.\n\n"
-        f"Напишите <b>{FULL_RESET_PHRASE}</b> для подтверждения или /quit для отмены."
+        f"{prompt}\n\nНапишите <b>{phrase}</b> для подтверждения или /quit для отмены."
     )
 
 
-@router.message(StateFilter(AdminForm.full_reset_confirm), is_admin)
-async def full_reset_confirm(message: Message, state: FSMContext) -> None:
+@router.message(Command("clear_pvp"), is_admin)
+async def clear_pvp_start(message: Message, state: FSMContext) -> None:
+    await _ask_confirm(
+        message, state, "clear_pvp", CLEAR_PVP_PHRASE,
+        "⚠️ Отменить все текущие PvP-бои? Рейтинг не изменится.",
+    )
+
+
+@router.message(Command("clear_pve"), is_admin)
+async def clear_pve_start(message: Message, state: FSMContext) -> None:
+    await _ask_confirm(
+        message, state, "clear_pve", CLEAR_PVE_PHRASE,
+        "⚠️ Отменить все текущие PvE-бои? Рейтинг не изменится.",
+    )
+
+
+@router.message(Command("reset_bot"), is_admin)
+async def reset_bot_start(message: Message, state: FSMContext) -> None:
+    await _ask_confirm(
+        message, state, "reset_bot", RESET_BOT_PHRASE,
+        "⚠️ Сброс бота: рейтинг/rd/vol/победы + отмена всех PvE-боёв.",
+    )
+
+
+@router.message(Command("reset_arena"), is_admin)
+async def reset_arena_start(message: Message, state: FSMContext) -> None:
+    await _ask_confirm(
+        message, state, "reset_arena", RESET_ARENA_PHRASE,
+        "⚠️ Хард-ресет арены: рейтинг ВСЕХ игроков → 1000 "
+        "(rd/vol/матчи/победы сброшены) + отмена всех PvP-боёв.",
+    )
+
+
+@router.message(Command("season_end"), is_admin)
+async def season_end_start(message: Message, state: FSMContext) -> None:
+    await _ask_confirm(
+        message, state, "season_end", SEASON_END_PHRASE,
+        "🏁 Закрыть сезон: награды, soft-reset и новый сезон.",
+    )
+
+
+@router.message(Command("full_reset"), is_admin)
+async def full_reset_start(message: Message, state: FSMContext) -> None:
+    await _ask_confirm(
+        message, state, "full_reset", FULL_RESET_PHRASE,
+        "⚠️ Полная отчистка: очки, рейтинг, осколки, крутки, персонажи, инвентарь, "
+        f"колоды и статус арены.\nАккаунты останутся. Круток будет {START_SPINS}.",
+    )
+
+
+@router.message(StateFilter(AdminForm.confirm_action), is_admin)
+async def confirm_action(message: Message, state: FSMContext, bot: Bot) -> None:
     if await _quit_if_requested(message, state):
         return
-    if (message.text or "").strip() != FULL_RESET_PHRASE:
+    data = await state.get_data()
+    action = data.get("action")
+    phrase = data.get("phrase", "")
+    if (message.text or "").strip() != phrase:
         await state.clear()
         await message.answer("❌ Отменено: фраза подтверждения не совпала")
         return
     await state.clear()
-    count = await run_db(reset_all_progress)
-    await message.answer(f"✅ Полная отчистка выполнена. Аккаунтов обнулено: {count}")
+
+    if action == "clear_pvp":
+        res = await reset_active_matches(bot, only="pvp")
+        await message.answer(f"✅ PvP-бои отменены: {res['matches']}, уведомлено: {res['notified']}")
+    elif action == "clear_pve":
+        res = await reset_active_matches(bot, only="pve")
+        await message.answer(f"✅ PvE-бои отменены: {res['matches']}, уведомлено: {res['notified']}")
+    elif action == "reset_bot":
+        await run_db(reset_bot_stats)
+        res = await reset_active_matches(bot, only="pve")
+        await message.answer(
+            f"✅ Бот сброшен (рейтинг 1000). PvE-бои отменены: {res['matches']}, уведомлено: {res['notified']}"
+        )
+    elif action == "reset_arena":
+        users = await run_db(reset_all_ratings)
+        res = await reset_active_matches(bot, only="pvp")
+        await message.answer(
+            f"✅ Арена сброшена: рейтинг обнулён у {users} игроков, "
+            f"PvP-бои отменены: {res['matches']}, уведомлено: {res['notified']}"
+        )
+    elif action == "season_end":
+        from features.arena.seasons import run_season_close
+
+        await message.answer("🏁 Закрываю сезон: награды, soft-reset, новый сезон...")
+        try:
+            result = await run_season_close(bot)
+            await message.answer(f"✅ Сезон закрыт. Награждено игроков: {result['count']}")
+        except Exception as e:  # noqa: BLE001
+            await message.answer(f"❌ Ошибка: {e}")
+    elif action == "full_reset":
+        count = await run_db(reset_all_progress)
+        await message.answer(f"✅ Полная отчистка выполнена. Аккаунтов обнулено: {count}")
+    else:
+        await message.answer("❓ Неизвестное действие")
 
 
 # ──────────────────────────────────────────────
@@ -368,17 +463,4 @@ async def run_cfr_selftest(message: Message) -> None:
     )
 
 
-# ──────────────────────────────────────────────
-# /season_end — force close the current season
-# ──────────────────────────────────────────────
 
-@router.message(Command("season_end"), is_admin)
-async def season_end(message: Message, bot: Bot) -> None:
-    from features.arena.seasons import run_season_close
-
-    await message.answer("🏁 Закрываю сезон: награды, soft-reset, новый сезон...")
-    try:
-        result = await run_season_close(bot)
-        await message.answer(f"✅ Сезон закрыт. Награждено игроков: {result['count']}")
-    except Exception as e:  # noqa: BLE001
-        await message.answer(f"❌ Ошибка: {e}")

@@ -121,7 +121,14 @@ ARENA_RESET_RD_FLOOR = 200.0       # минимальный RD при reset
 ARENA_RATING_CENTER = 1000         # якорь шкалы Glicko-2
 ARENA_SEASON_WEEKS = int(os.getenv('ARENA_SEASON_WEEKS', '3'))  # длина сезона
 START_SPINS = int(os.getenv('START_SPINS', '10'))               # стартовые крутки (новичок / после сброса)
+
+# Фразы подтверждения для опасных админ-команд
 FULL_RESET_PHRASE = os.getenv('FULL_RESET_PHRASE', 'ПОЛНАЯ_ОТЧИСТКА')
+CLEAR_PVP_PHRASE = os.getenv('CLEAR_PVP_PHRASE', 'ОЧИСТИТЬ_ПВП')
+CLEAR_PVE_PHRASE = os.getenv('CLEAR_PVE_PHRASE', 'ОЧИСТИТЬ_ПВЕ')
+RESET_BOT_PHRASE = os.getenv('RESET_BOT_PHRASE', 'СБРОС_БОТА')
+RESET_ARENA_PHRASE = os.getenv('RESET_ARENA_PHRASE', 'СБРОС_АРЕНЫ')
+SEASON_END_PHRASE = os.getenv('SEASON_END_PHRASE', 'КОНЕЦ_СЕЗОНА')
 
 # Приватная 1v1 CFR-таблица (не в гите; копируется вручную/на сервере)
 CFR_TABLE_PATH = os.getenv(

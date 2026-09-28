@@ -428,6 +428,38 @@ def save_bot_stats(rating: float, rd: float, vol: float, won: bool) -> None:
             bot.losses = (bot.losses or 0) + 1
 
 
+def reset_bot_stats() -> None:
+    """Reset the PvE bot's own rating/record to defaults."""
+    with get_session() as session:
+        bot = session.get(ArenaBot, 1)
+        if bot is None:
+            bot = ArenaBot(id=1)
+            session.add(bot)
+        bot.rating = ARENA_RATING_CENTER
+        bot.rd = 350.0
+        bot.vol = 0.06
+        bot.wins = 0
+        bot.losses = 0
+
+
+def reset_all_ratings() -> int:
+    """Hard reset every user's arena rating (PvP ladder). Returns users reset."""
+    with get_session() as session:
+        result = session.execute(
+            sql_update(User).values(
+                rating=ARENA_RATING_CENTER,
+                rd=350.0,
+                vol=0.06,
+                rating_matches=0,
+                last_match_at=None,
+                last_decay_at=None,
+                arena_wins=0,
+                arena_losses=0,
+            )
+        )
+        return result.rowcount or 0
+
+
 def is_deck_ready(user_id: int) -> bool:
     return all(get_arena_deck_ids(user_id))
 
