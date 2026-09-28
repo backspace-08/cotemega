@@ -2,6 +2,9 @@
 
 Users store three numbers: `rating`, `rd` (rating deviation), `vol`
 (volatility). A match updates both players by a single scored game.
+
+All outputs are clamped to sane bounds: the volatility solver is iterative and
+must never be allowed to leak a divergent value into the stored rating.
 """
 
 from dataclasses import dataclass
@@ -15,6 +18,20 @@ DEFAULT_RATING = 1000.0
 DEFAULT_RD = 350.0
 DEFAULT_VOL = 0.06
 _EPSILON = 1e-6
+
+# Safety bounds (defence in depth).
+RATING_MIN = DEFAULT_RATING - 3000.0
+RATING_MAX = DEFAULT_RATING + 3000.0
+RD_MIN = 30.0
+RD_MAX = 350.0
+VOL_MIN = 0.01
+VOL_MAX = 0.20
+SIGMA_MIN = 0.01
+SIGMA_MAX = 0.20
+
+
+def _clamp(value: float, low: float, high: float) -> float:
+    return max(low, min(high, value))
 
 
 @dataclass
@@ -37,33 +54,42 @@ def _expected(mu: float, mu_j: float, phi_j: float) -> float:
 
 
 def _new_volatility(phi: float, v: float, delta: float, sigma: float, tau: float) -> float:
-    a = log(sigma * sigma)
+    # `a0` MUST stay constant: the inner f() closes over it. Previously the
+    # loop reused the same name `a` as its lower bracket, corrupting f() after
+    # the first iteration and converging to a bogus (huge) volatility.
+    a0 = log(sigma * sigma)
 
     def f(x: float) -> float:
         e = exp(x)
         num = e * (delta * delta - phi * phi - v - e)
         den = 2.0 * (phi * phi + v + e) ** 2
-        return num / den - (x - a) / (tau * tau)
+        return num / den - (x - a0) / (tau * tau)
 
     if delta * delta > phi * phi + v:
         b = log(delta * delta - phi * phi - v)
     else:
         k = 1
-        while f(a - k * tau) < 0:
+        while f(a0 - k * tau) < 0:
             k += 1
-        b = a - k * tau
+        b = a0 - k * tau
 
+    a = a0
     fa, fb = f(a), f(b)
-    while abs(b - a) > _EPSILON:
-        c = a + (a - b) * fa / (fb - fa)
+    iterations = 0
+    while abs(b - a) > _EPSILON and iterations < 100:
+        denom = fb - fa
+        if abs(denom) < 1e-15:
+            break
+        c = a + (a - b) * fa / denom
         fc = f(c)
         if fc * fb <= 0:
             a, fa = b, fb
         else:
             fa /= 2.0
         b, fb = c, fc
+        iterations += 1
 
-    return exp(a / 2.0)
+    return _clamp(exp(a / 2.0), SIGMA_MIN, SIGMA_MAX)
 
 
 def update_one(player: GlickoRating, opponent: GlickoRating, score: float, tau: float = TAU) -> GlickoRating:
@@ -74,7 +100,8 @@ def update_one(player: GlickoRating, opponent: GlickoRating, score: float, tau: 
     phi_j = opponent.rd / SCALE
 
     g_j = _g(phi_j)
-    e_j = _expected(mu, mu_j, phi_j)
+    # Keep the expected score away from 0/1 so `v` never divides by zero.
+    e_j = _clamp(_expected(mu, mu_j, phi_j), 1e-6, 1.0 - 1e-6)
 
     v = 1.0 / (g_j * g_j * e_j * (1.0 - e_j))
     delta = v * g_j * (score - e_j)
@@ -85,9 +112,9 @@ def update_one(player: GlickoRating, opponent: GlickoRating, score: float, tau: 
     new_mu = mu + new_phi * new_phi * g_j * (score - e_j)
 
     return GlickoRating(
-        rating=new_mu * SCALE + DEFAULT_RATING,
-        rd=new_phi * SCALE,
-        vol=new_vol,
+        rating=_clamp(new_mu * SCALE + DEFAULT_RATING, RATING_MIN, RATING_MAX),
+        rd=_clamp(new_phi * SCALE, RD_MIN, RD_MAX),
+        vol=_clamp(new_vol, VOL_MIN, VOL_MAX),
     )
 
 
