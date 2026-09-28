@@ -20,6 +20,18 @@ from core.logger import logger
 
 MAX_MESSAGE_AGE = timedelta(hours=48)
 
+_IGNORABLE_EDIT_ERRORS = (
+    "message is not modified",
+    "canceled by new edit message request",
+    "message can't be edited",
+    "message to edit not found",
+)
+
+
+def _is_ignorable_edit_error(error: TelegramBadRequest) -> bool:
+    text = str(error).lower()
+    return any(marker in text for marker in _IGNORABLE_EDIT_ERRORS)
+
 
 async def run_db(func: Callable[..., Any], *args, **kwargs) -> Any:
     """Run a synchronous DB/service function without blocking the event loop."""
@@ -80,12 +92,36 @@ async def edit_character_card(
         media = InputMediaAnimation(media=file, caption=caption)
     else:
         media = InputMediaPhoto(media=file, caption=caption)
-    await bot.edit_message_media(
-        chat_id=chat_id,
-        message_id=message_id,
-        media=media,
-        reply_markup=reply_markup,
-    )
+    try:
+        await bot.edit_message_media(
+            chat_id=chat_id,
+            message_id=message_id,
+            media=media,
+            reply_markup=reply_markup,
+        )
+    except TelegramBadRequest as e:
+        if not _is_ignorable_edit_error(e):
+            raise
+
+
+async def safe_edit_text(
+    bot: Bot,
+    chat_id: int,
+    message_id: int,
+    text: str,
+    reply_markup: InlineKeyboardMarkup | None = None,
+) -> None:
+    """edit_message_text that ignores harmless races/identical edits."""
+    try:
+        await bot.edit_message_text(
+            chat_id=chat_id,
+            message_id=message_id,
+            text=text,
+            reply_markup=reply_markup,
+        )
+    except TelegramBadRequest as e:
+        if not _is_ignorable_edit_error(e):
+            raise
 
 
 async def show_main_menu(bot: Bot, chat_id: int, user_id: int) -> None:
