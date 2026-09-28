@@ -58,7 +58,7 @@ def percentile(rank: int, total: int) -> int:
     return max(1, round(rank / total * 100))
 
 
-def position_text(rank: int, total: int, top_min: int = 20) -> str:
+def position_text(rank: int, total: int, top_min: int = 10) -> str:
     """Human position. Percentiles only make sense with enough players, so for
     a small population we show just the place (e.g. "место 1/1")."""
     if total >= top_min:
