@@ -8,7 +8,7 @@ from core.callbacks import MenuCB
 from core.keyboards import menu_only_kb
 from core.utils import run_db, safe_delete_message
 from db.queries import count_ranked_users, get_user_data, get_user_rank
-from features.arena.leagues import UNRANKED, league_for_rank, percentile
+from features.arena.leagues import UNRANKED, league_for_rank, position_text
 
 router = Router()
 
@@ -30,7 +30,7 @@ async def show_profile(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
         rank = await run_db(get_user_rank, user_id)
         league = league_for_rank(rank, total)
         rating_line = f"⚔️ Рейтинг - {round(data.rating)}"
-        league_line = f"🏅 Лига - {league.title} (топ {percentile(rank, total)}%, место {rank}/{total})"
+        league_line = f"🏅 Лига - {league.title} ({position_text(rank, total)})"
 
     games = data.arena_wins + data.arena_losses
     winrate = (data.arena_wins / games * 100.0) if games else 0.0

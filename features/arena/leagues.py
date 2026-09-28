@@ -58,6 +58,14 @@ def percentile(rank: int, total: int) -> int:
     return max(1, round(rank / total * 100))
 
 
+def position_text(rank: int, total: int, top_min: int = 20) -> str:
+    """Human position. Percentiles only make sense with enough players, so for
+    a small population we show just the place (e.g. "место 1/1")."""
+    if total >= top_min:
+        return f"топ {percentile(rank, total)}%, место {rank}/{total}"
+    return f"место {rank}/{total}"
+
+
 def league_table_text() -> str:
     lines = ["<blockquote>Лига — награда — место",
              f"🌟 Мастер — {MASTER.shards}🔮, {MASTER.spins}🎴 — топ 5%",

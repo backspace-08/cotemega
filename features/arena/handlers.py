@@ -32,7 +32,7 @@ from db.queries import (
 from features.arena import cfr_player
 from features.arena.adapter import card_to_meta
 from features.arena.engine import GameState
-from features.arena.leagues import UNRANKED, league_for_rank, league_table_text, percentile
+from features.arena.leagues import UNRANKED, league_for_rank, league_table_text, position_text
 from features.arena.pve import build_bot_deck
 from features.arena.results import (
     bot_winrate_line,
@@ -156,7 +156,7 @@ async def _player_rating_line(user_id: int) -> str:
     total = await run_db(count_ranked_users)
     rank = await run_db(get_user_rank, user_id)
     league = league_for_rank(rank, total)
-    return f"⚔️ Ваш рейтинг: {round(rating)} {league.emoji} (топ {percentile(rank, total)}%)"
+    return f"⚔️ Ваш рейтинг: {round(rating)} {league.emoji} ({position_text(rank, total)})"
 
 
 @router.callback_query(ArenaCB.filter(F.action == "menu"))
@@ -202,11 +202,13 @@ async def show_leagues(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
 
     if matches < ARENA_CALIBRATION_MATCHES:
         current = f"{UNRANKED.title} (калибровка {matches}/{ARENA_CALIBRATION_MATCHES})"
+        rating_line = ""
     else:
         total = await run_db(count_ranked_users)
         rank = await run_db(get_user_rank, user_id)
         league = league_for_rank(rank, total)
-        current = f"{league.title} (топ {percentile(rank, total)}%, место {rank}/{total})"
+        current = f"{league.title} ({position_text(rank, total)})"
+        rating_line = f"Рейтинг - {round(rating)}\n"
 
     text = (
         "🔱 <b>Лиги</b>\n"
@@ -214,7 +216,7 @@ async def show_leagues(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
         "Лига считается по месту среди отранжированных игроков (10+ матчей за сезон).\n"
         "За неактивность (3+ дня без боёв) рейтинг каждый день снижается.\n\n"
         f"Ваша лига - {current}\n"
-        f"Рейтинг - {round(rating)}\n"
+        f"{rating_line}"
         f"До конца сезона: {status['days_left']} дн."
     )
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
