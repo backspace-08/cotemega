@@ -141,7 +141,7 @@ def switch_kb(record: MatchRecord, user_id: int) -> InlineKeyboardMarkup:
         hp = side.characters[idx].hp
         builder.row(
             InlineKeyboardButton(
-                text=f"{get_type_char(card['type'])} {card['name']} ❤️{hp} 💪{card['atk']}",
+                text=f"{get_type_char(card['type'])} {card['name']} lvl {card.get('level', 1)} ❤️{hp} 💪{card['atk']}",
                 callback_data=BattleCB(action="switchto", value=idx, token=token).pack(),
             )
         )

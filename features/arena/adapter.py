@@ -49,6 +49,7 @@ def card_to_meta(card) -> dict:
         "type": int(card.type or 0),
         "hp": int(card.health),
         "atk": int(card.attack),
+        "level": int(getattr(card, "level", 1)),
         "name": card.translation or card.char_name,
         "gender": getattr(card, "gender", "unknown"),
         "image": str(card.image_path),

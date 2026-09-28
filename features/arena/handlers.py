@@ -142,7 +142,13 @@ async def _deck_slots(user_id: int) -> list:
             continue
         card = await run_db(get_user_character, user_id, char_id)
         slots.append(
-            {"type": card.type, "name": card.translation, "hp": card.health, "atk": card.attack}
+            {
+                "type": card.type,
+                "name": card.translation,
+                "hp": card.health,
+                "atk": card.attack,
+                "level": card.level,
+            }
             if card
             else None
         )

@@ -17,6 +17,10 @@ def _emoji(card: dict) -> str:
     return get_type_char(card.get("type", 0))
 
 
+def _name(card: dict) -> str:
+    return f"{card['name']} lvl {card.get('level', 1)}"
+
+
 def _relation_symbol(my_type: int, enemy_type: int) -> str:
     ratio = multiplier(to_engine_type(my_type), to_engine_type(enemy_type))
     if ratio > 1:
@@ -50,12 +54,12 @@ def vs_message(record: MatchRecord, user_id: int) -> str:
     my_card, my_hp, enemy_card, enemy_hp = active_cards(record, user_id)
     return (
         f"<blockquote><b>{escape(display_name(record, user_id))}</b>\n"
-        f"★ {_emoji(my_card)} {my_card['name']}\n"
+        f"★ {_emoji(my_card)} {_name(my_card)}\n"
         f"├‣❤️ - {my_hp}\n"
         f"├‣💪 - {my_card['atk']}\n"
         f"VS\n"
         f"<b>{escape(display_name(record, opponent_id))}</b>\n"
-        f"★ {_emoji(enemy_card)} {enemy_card['name']}\n"
+        f"★ {_emoji(enemy_card)} {_name(enemy_card)}\n"
         f"├‣❤️ - {enemy_hp}\n"
         f"├‣💪 - {enemy_card['atk']}</blockquote>"
     )
@@ -147,7 +151,7 @@ def main_deck_block(slots: list[dict | None]) -> str:
         if card is None:
             body.append(f"{marks[index]} Пусто")
             continue
-        body.append(f"{marks[index]} {_emoji(card)} {card['name']}")
+        body.append(f"{marks[index]} {_emoji(card)} {_name(card)}")
         body.append(f"├‣❤️ - {card['hp']}")
         body.append(f"├‣💪 - {card['atk']}")
     return "📁<b>Твоя колода:</b>\n<blockquote>" + "\n".join(body) + "</blockquote>"
@@ -163,7 +167,7 @@ def _deck_block(record: MatchRecord, user_id: int) -> str:
         hp = side.characters[idx].hp
         mark = "★" if position == 1 else "✦"
         if hp > 0:
-            body.append(f"{mark} {_emoji(card)} {card['name']}")
+            body.append(f"{mark} {_emoji(card)} {_name(card)}")
             body.append(f"├‣❤️ - {hp}")
             body.append(f"├‣💪 - {card['atk']}")
         else:
