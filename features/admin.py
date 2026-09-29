@@ -50,6 +50,7 @@ class AdminForm(StatesGroup):
     shards_description = State()
     give_char_id = State()
     all_currency_amount = State()
+    broadcast_text = State()
     confirm_action = State()
 
 
@@ -230,6 +231,7 @@ ADMIN_COMMANDS_TEXT = (
     "/give_shards — выдать осколки одному игроку (кнопки или вручную + описание)\n"
     "/give_char — выдать себе персонажа по ID из БД\n"
     "/give_all — выдать валюту ВСЕМ (например «500» = осколки, «500 spins», «500 super_spins»)\n"
+    "/broadcast — отправить сообщение всем игрокам\n"
     "/clear_pvp — отменить все текущие PvP-бои (рейтинг не меняется)\n"
     "/clear_pve — отменить все текущие PvE-бои (рейтинг не меняется)\n"
     "/reset_bot — сброс рейтинга/переменных бота + отмена PvE-боёв\n"
@@ -239,6 +241,7 @@ ADMIN_COMMANDS_TEXT = (
     "/cfr_stats — нагрузка CFR, рейтинг и винрейт бота\n"
     "/cfr_bench [N] — бенч параллельных решений и памяти\n"
     "/cfr_selftest — проверка CFR против случайной политики\n"
+    "/test_battle — тестовый бой против AI (рейтинги не затрагиваются)\n"
     "Все опасные команды требуют ввода фразы подтверждения."
 )
 
@@ -291,6 +294,47 @@ async def give_all_amount(message: Message, state: FSMContext, bot: Bot) -> None
         except Exception as e:  # noqa: BLE001
             logger.error(f"give_all: не удалось начислить {uid}: {e}")
     await message.answer(f"✅ Начислено {amount} {icon} всем ({sent}/{len(user_ids)})")
+
+
+# ──────────────────────────────────────────────
+# /broadcast
+# ──────────────────────────────────────────────
+
+@router.message(Command("broadcast"), is_admin)
+async def broadcast_start(message: Message, state: FSMContext) -> None:
+    await state.set_state(AdminForm.broadcast_text)
+    await message.answer(
+        "Отправьте сообщение рассылки — текст и/или прикреплённые изображения "
+        "(или /quit для отмены)."
+    )
+
+
+@router.message(StateFilter(AdminForm.broadcast_text), is_admin)
+async def broadcast_send(message: Message, state: FSMContext, bot: Bot) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    has_media = bool(
+        message.photo or message.video or message.document or message.animation
+        or message.audio or message.voice or message.sticker
+    )
+    if not has_media and not (message.text or message.caption or "").strip():
+        await message.answer("❌ Пришлите текст и/или изображение.")
+        return
+
+    await state.clear()
+    user_ids = await run_db(get_all_user_ids)
+    sent = 0
+    for uid in user_ids:
+        try:
+            # copy_message keeps the text, formatting and attached media (photo)
+            await bot.copy_message(
+                chat_id=uid, from_chat_id=message.chat.id, message_id=message.message_id
+            )
+            sent += 1
+            await asyncio.sleep(0.05)
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"broadcast: не удалось отправить {uid}: {e}")
+    await message.answer(f"✅ Рассылка завершена: {sent}/{len(user_ids)}")
 
 
 # ──────────────────────────────────────────────
