@@ -58,6 +58,7 @@ from features.arena.keyboards import (
     switch_kb,
 )
 from features.arena.matchmaking import (
+    arena_counts,
     is_queued,
     join_queue,
     leave_queue,
@@ -86,7 +87,44 @@ from features.arena.store import MatchRecord, MatchStore
 router = Router()
 
 _timers: dict[str, asyncio.Task] = {}
+_search_tasks: dict[int, asyncio.Task] = {}
 BOT_ID = 0
+
+
+def _search_text(total: int, queued: int) -> str:
+    return (
+        "⏳ Если поиск слишком долгий, попробуйте перезайти в него\n"
+        "Ищем соперника...\n\n"
+        f"🟢 Сейчас в арене: {total} (в поиске: {queued})"
+    )
+
+
+def _stop_search_updates(user_id: int) -> None:
+    task = _search_tasks.pop(user_id, None)
+    if task is not None and task is not asyncio.current_task():
+        task.cancel()
+
+
+def _start_search_updates(bot: Bot, user_id: int, message_id: int) -> None:
+    _stop_search_updates(user_id)
+
+    async def _job() -> None:
+        while True:
+            await asyncio.sleep(10)
+            if not await is_queued(user_id):
+                return
+            total, queued = await arena_counts()
+            try:
+                await bot.edit_message_text(
+                    _search_text(total, queued),
+                    chat_id=user_id,
+                    message_id=message_id,
+                    reply_markup=queue_kb(),
+                )
+            except TelegramBadRequest:
+                pass
+
+    _search_tasks[user_id] = asyncio.create_task(_job())
 
 
 def _is_human(record: MatchRecord, user_id: int) -> bool:
@@ -299,6 +337,7 @@ async def _start_match(bot: Bot, user1: int, user2: int) -> bool:
     await store.save(record)
 
     for uid in (user1, user2):
+        _stop_search_updates(uid)
         search_msg = await pop_search_message(uid)
         if search_msg:
             await safe_delete_message(bot, uid, search_msg)
@@ -328,12 +367,12 @@ async def enter_pvp(bot: Bot, user_id: int, chat_id: int, source_message_id: int
             await safe_delete_message(bot, chat_id, source_message_id)
         opponent = await join_queue(user_id)
         if opponent is None:
+            total, queued = await arena_counts()
             msg = await bot.send_message(
-                user_id,
-                "⏳ Если поиск слишком долгий, попробуйте перезайти в него\nИщем соперника...",
-                reply_markup=queue_kb(),
+                user_id, _search_text(total, queued), reply_markup=queue_kb()
             )
             await set_search_message(user_id, msg.message_id)
+            _start_search_updates(bot, user_id, msg.message_id)
             return
 
     await _start_match(bot, user_id, opponent)
@@ -352,6 +391,7 @@ async def cmd_fight(message: Message, bot: Bot, user_id: int) -> None:
 
 @router.callback_query(ArenaCB.filter(F.action == "leave"))
 async def leave_queue_handler(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+    _stop_search_updates(user_id)
     await leave_queue(user_id)
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(callback.message.chat.id, "Вы вышли из поиска противника")

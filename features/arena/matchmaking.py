@@ -40,6 +40,20 @@ async def is_queued(user_id: int) -> bool:
     return bool(await get_redis().sismember(QUEUE_KEY, user_id))
 
 
+async def arena_counts() -> tuple[int, int]:
+    """(players currently in arena, players waiting in queue)."""
+    redis = get_redis()
+    queued_ids = {int(m) for m in await redis.smembers(QUEUE_KEY)}
+    players = set(queued_ids)
+    async for key in redis.scan_iter(match="arena:match:*"):
+        data = await redis.hgetall(key)
+        for field in ("player1", "player2"):
+            uid = data.get(field)
+            if uid and uid != "0":
+                players.add(int(uid))
+    return len(players), len(queued_ids)
+
+
 def _search_key(user_id: int) -> str:
     return f"arena:searchmsg:{user_id}"
 
