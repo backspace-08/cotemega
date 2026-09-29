@@ -460,20 +460,25 @@ def _start_timer(bot: Bot, match_id: str, owner: int) -> None:
 
 def _cancel_timer(match_id: str) -> None:
     task = _timers.pop(match_id, None)
-    if task:
+    # Never cancel the task we're currently running in: _finish_match() calls
+    # this from inside the timer task itself, and cancelling it would abort the
+    # finish (timeouts would silently stop working).
+    if task is not None and task is not asyncio.current_task():
         task.cancel()
 
 
 def cancel_timers(match_ids=None) -> None:
     """Cancel turn timers for the given matches (or all when None)."""
+    current = asyncio.current_task()
     if match_ids is None:
         for task in _timers.values():
-            task.cancel()
+            if task is not current:
+                task.cancel()
         _timers.clear()
         return
     for match_id in match_ids:
         task = _timers.pop(match_id, None)
-        if task:
+        if task is not None and task is not current:
             task.cancel()
 
 
