@@ -13,6 +13,7 @@ from aiogram.types import CallbackQuery, Message
 from config import (
     ADMIN_ID,
     ARENA_CALIBRATION_MATCHES,
+    ARENA_COMMENTS_PER_TURN,
     ARENA_TURN_TIMEOUT,
     ARENA_WARN_BEFORE,
     CFR_MAX_ACTIVE,
@@ -131,6 +132,7 @@ ABOUT_TEXT = (
     "<b>Игра</b>\n"
     "📁 Колода — 3 персонажа. Бой идёт, пока у одной стороны не кончатся персонажи.\n"
     f"⏳ На ход — {ARENA_TURN_TIMEOUT} секунд.\n"
+    f"💬 За полуход каждый игрок может отправить до {ARENA_COMMENTS_PER_TURN} сообщений сопернику.\n"
     "🏆 Цель — выбить всех персонажей противника.\n\n"
     "<b>Лиги и награды:</b>\n"
     "В меню «🔱 Лиги»"
@@ -439,8 +441,7 @@ async def _send_turn_prompt(bot: Bot, record: MatchRecord, store: MatchStore) ->
         await bot.send_message(other, "Ход противника")
 
     if _is_human(record, owner):
-        hint = "" if _has_ai(record) else "\n💬 За ход можно отправить одно сообщение сопернику."
-        await bot.send_message(owner, f"Ваш ход{hint}")
+        await bot.send_message(owner, f"Ваш ход")
         prev = record.player1_msg_id if owner == record.player1 else record.player2_msg_id
         if prev:
             await safe_delete_message(bot, owner, prev)
@@ -785,14 +786,16 @@ async def relay_comment(message: Message, bot: Bot, user_id: int) -> None:
 
     store = MatchStore()
     record = await store.load_for_user(user_id)
-    if record is None or _has_ai(record) or record.turn_owner != user_id:
+    if record is None or _has_ai(record):
         return
 
-    if record.comment_turn == record.state.turn:
-        await message.answer("⚠️ За ход можно отправить только одно сообщение.")
+    if record.comments_used(user_id, record.state.turn) >= ARENA_COMMENTS_PER_TURN:
+        await message.answer(
+            f"⚠️ За полуход можно отправить не больше {ARENA_COMMENTS_PER_TURN} сообщений."
+        )
         return
 
-    record.comment_turn = record.state.turn
+    record.register_comment(user_id, record.state.turn)
     await store.save(record)
 
     opponent = record.opponent_of[user_id]

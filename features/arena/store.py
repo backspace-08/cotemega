@@ -54,7 +54,10 @@ class MatchRecord:
     pending_defends: int = 0
     pending_bonuses: int = 0
     pending_switch_to: int = -1  # index in own side.characters, -1 = none
-    comment_turn: int = -1  # half-turn on which the owner already sent a comment
+    p1_comment_turn: int = -1  # half-turn each player last commented on
+    p1_comment_count: int = 0  # messages sent on that half-turn
+    p2_comment_turn: int = -1
+    p2_comment_count: int = 0
 
     @property
     def turn_owner(self) -> int:
@@ -84,6 +87,25 @@ class MatchRecord:
         self.pending_bonuses = 0
         self.pending_switch_to = -1
 
+    def comments_used(self, user_id: int, turn: int) -> int:
+        if user_id == self.player1:
+            return self.p1_comment_count if self.p1_comment_turn == turn else 0
+        return self.p2_comment_count if self.p2_comment_turn == turn else 0
+
+    def register_comment(self, user_id: int, turn: int) -> None:
+        if user_id == self.player1:
+            if self.p1_comment_turn == turn:
+                self.p1_comment_count += 1
+            else:
+                self.p1_comment_turn = turn
+                self.p1_comment_count = 1
+        else:
+            if self.p2_comment_turn == turn:
+                self.p2_comment_count += 1
+            else:
+                self.p2_comment_turn = turn
+                self.p2_comment_count = 1
+
 
 class MatchStore:
     def __init__(self, ttl: int = MATCH_TTL_SECONDS) -> None:
@@ -109,7 +131,10 @@ class MatchStore:
             "pending_defends": str(record.pending_defends),
             "pending_bonuses": str(record.pending_bonuses),
             "pending_switch_to": str(record.pending_switch_to),
-            "comment_turn": str(record.comment_turn),
+            "p1_comment_turn": str(record.p1_comment_turn),
+            "p1_comment_count": str(record.p1_comment_count),
+            "p2_comment_turn": str(record.p2_comment_turn),
+            "p2_comment_count": str(record.p2_comment_count),
         }
         async with redis.pipeline(transaction=True) as pipe:
             pipe.hset(_match_key(record.match_id), mapping=mapping)
@@ -143,7 +168,10 @@ class MatchStore:
             pending_defends=int(data.get("pending_defends") or 0),
             pending_bonuses=int(data.get("pending_bonuses") or 0),
             pending_switch_to=int(data.get("pending_switch_to") or -1),
-            comment_turn=int(data.get("comment_turn") or -1),
+            p1_comment_turn=int(data.get("p1_comment_turn") or -1),
+            p1_comment_count=int(data.get("p1_comment_count") or 0),
+            p2_comment_turn=int(data.get("p2_comment_turn") or -1),
+            p2_comment_count=int(data.get("p2_comment_count") or 0),
         )
 
     async def load_for_user(self, user_id: int) -> MatchRecord | None:
