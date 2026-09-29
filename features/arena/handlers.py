@@ -9,7 +9,12 @@ from aiogram.exceptions import TelegramBadRequest
 from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
-from config import ARENA_CALIBRATION_MATCHES, ARENA_TURN_TIMEOUT, CFR_MAX_ACTIVE
+from config import (
+    ARENA_CALIBRATION_MATCHES,
+    ARENA_TURN_TIMEOUT,
+    ARENA_WARN_BEFORE,
+    CFR_MAX_ACTIVE,
+)
 from core.callbacks import ArenaCB, BattleCB, MenuCB
 from core.logger import logger
 from core.utils import (
@@ -448,8 +453,21 @@ def _start_timer(bot: Bot, match_id: str, owner: int) -> None:
     _cancel_timer(match_id)
 
     async def _job() -> None:
-        await asyncio.sleep(ARENA_TURN_TIMEOUT)
         store = MatchStore()
+        warn = ARENA_WARN_BEFORE
+        if warn > 0 and ARENA_TURN_TIMEOUT > warn:
+            await asyncio.sleep(ARENA_TURN_TIMEOUT - warn)
+            record = await store.load(match_id)
+            if record is None or record.turn_owner != owner:
+                return
+            try:
+                await bot.send_message(owner, f"⏳ Осталось {warn} секунд на ход!")
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"Timeout warning failed for {owner}: {e}")
+            await asyncio.sleep(warn)
+        else:
+            await asyncio.sleep(ARENA_TURN_TIMEOUT)
+
         record = await store.load(match_id)
         if record is None or record.turn_owner != owner:
             return

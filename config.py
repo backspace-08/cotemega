@@ -111,6 +111,7 @@ SHARD_MAP = {
 
 # ── Арена ──
 ARENA_TURN_TIMEOUT = 60            # секунд на ход
+ARENA_WARN_BEFORE = int(os.getenv('ARENA_WARN_BEFORE', '15'))  # предупреждение за N сек
 ARENA_CALIBRATION_MATCHES = 10     # матчей до показа рейтинга
 ARENA_MIN_MATCHES_FOR_REWARD = 10  # минимум матчей за сезон для награды
 ARENA_DECAY_START_DAYS = 3         # простой до начала decay
