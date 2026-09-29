@@ -53,6 +53,7 @@ class MatchRecord:
     pending_defends: int = 0
     pending_bonuses: int = 0
     pending_switch_to: int = -1  # index in own side.characters, -1 = none
+    comment_turn: int = -1  # half-turn on which the owner already sent a comment
 
     @property
     def turn_owner(self) -> int:
@@ -106,6 +107,7 @@ class MatchStore:
             "pending_defends": str(record.pending_defends),
             "pending_bonuses": str(record.pending_bonuses),
             "pending_switch_to": str(record.pending_switch_to),
+            "comment_turn": str(record.comment_turn),
         }
         async with redis.pipeline(transaction=True) as pipe:
             pipe.hset(_match_key(record.match_id), mapping=mapping)
@@ -138,6 +140,7 @@ class MatchStore:
             pending_defends=int(data.get("pending_defends") or 0),
             pending_bonuses=int(data.get("pending_bonuses") or 0),
             pending_switch_to=int(data.get("pending_switch_to") or -1),
+            comment_turn=int(data.get("comment_turn") or -1),
         )
 
     async def load_for_user(self, user_id: int) -> MatchRecord | None:

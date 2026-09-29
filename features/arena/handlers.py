@@ -2,6 +2,7 @@
 
 import asyncio
 import random
+from html import escape
 from pathlib import Path
 
 from aiogram import Bot, F, Router
@@ -419,7 +420,8 @@ async def _send_turn_prompt(bot: Bot, record: MatchRecord, store: MatchStore) ->
         await bot.send_message(other, "Ход противника")
 
     if _is_human(record, owner):
-        await bot.send_message(owner, "Ваш ход")
+        hint = "" if record.vs_bot else "\n💬 За ход можно отправить одно сообщение сопернику."
+        await bot.send_message(owner, f"Ваш ход{hint}")
         prev = record.player1_msg_id if owner == record.player1 else record.player2_msg_id
         if prev:
             await safe_delete_message(bot, owner, prev)
@@ -736,3 +738,33 @@ async def _finish_match(
     await leave_queue(record.player2)
     await show_main_menu(bot, winner, winner)
     await show_main_menu(bot, loser, loser)
+
+
+# ──────────────────────────────────────────────
+# PvP comments: one text message per turn relayed to the opponent
+# ──────────────────────────────────────────────
+
+@router.message(F.text)
+async def relay_comment(message: Message, bot: Bot, user_id: int) -> None:
+    text = (message.text or "").strip()
+    if not text or text.startswith("/"):
+        return
+
+    store = MatchStore()
+    record = await store.load_for_user(user_id)
+    if record is None or record.vs_bot or record.turn_owner != user_id:
+        return
+
+    if record.comment_turn == record.state.turn:
+        await message.answer("⚠️ За ход можно отправить только одно сообщение.")
+        return
+
+    record.comment_turn = record.state.turn
+    await store.save(record)
+
+    opponent = record.opponent_of[user_id]
+    name = record.p1_name if user_id == record.player1 else record.p2_name
+    try:
+        await bot.send_message(opponent, f"💬 <b>{escape(name)}</b>: {escape(text)}")
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"Arena comment relay failed: {e}")
