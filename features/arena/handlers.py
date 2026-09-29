@@ -622,6 +622,25 @@ async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot:
         await store.save(record)
         card = record.cards_for(user_id)[callback_data.value]
         await _send_switch_media(bot, record, user_id, record.opponent_of[user_id], card)
+
+        if is_turn_over(record):
+            await _resolve_and_progress(bot, record, store)
+            await callback.answer()
+            return
+
+        # Send the action menu as a NEW message below the switch media, so the
+        # keyboard is not left above it.
+        await _clear_message(bot, callback.message.chat.id, callback.message.message_id)
+        msg = await bot.send_message(
+            user_id, turn_status(record, user_id), reply_markup=battle_kb(record, user_id)
+        )
+        if user_id == record.player1:
+            record.player1_msg_id = msg.message_id
+        else:
+            record.player2_msg_id = msg.message_id
+        await store.save(record)
+        await callback.answer()
+        return
     elif action == "back":
         await safe_edit_text(
             bot, callback.message.chat.id, callback.message.message_id,
