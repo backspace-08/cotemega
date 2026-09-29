@@ -5,7 +5,8 @@ Design (see conversation / ARENA_RATING.md):
   three weak characters is answered by three weak characters, never by one
   strong one;
 - the whole pool is used, level is free (1..MAX), duplicates are forbidden;
-- types are fully random (stats decide the match);
+- each bot character keeps its canonical type (random only when the character
+  has no type set, e.g. some specials);
 - a ~10% tolerance per character keeps the matchup close while still allowing
   lots of variety, and the final order is shuffled.
 """
@@ -63,9 +64,11 @@ def _weighted_pick(candidates: list[BotCandidate], rng: random.Random) -> BotCan
 
 def _to_meta(candidate: BotCandidate, rng: random.Random) -> dict:
     base = candidate.base
+    canonical = int(getattr(base, "type", 0) or 0)
+    char_type = canonical if 1 <= canonical <= 4 else rng.randint(1, 4)
     return {
         "char_id": int(base.char_id),
-        "type": rng.randint(1, 4),
+        "type": char_type,
         "hp": candidate.hp,
         "atk": candidate.atk,
         "level": candidate.level,
