@@ -11,6 +11,7 @@ from aiogram.filters import Command
 from aiogram.types import CallbackQuery, Message
 
 from config import (
+    ADMIN_ID,
     ARENA_CALIBRATION_MATCHES,
     ARENA_TURN_TIMEOUT,
     ARENA_WARN_BEFORE,
@@ -88,7 +89,11 @@ BOT_ID = 0
 
 
 def _is_human(record: MatchRecord, user_id: int) -> bool:
-    return not (record.vs_bot and user_id == BOT_ID)
+    return user_id != BOT_ID
+
+
+def _has_ai(record: MatchRecord) -> bool:
+    return BOT_ID in (record.player1, record.player2)
 
 ABOUT_TEXT = (
     "<b>❤️ Здоровье</b> — очки жизни персонажа\n"
@@ -355,7 +360,9 @@ async def leave_queue_handler(callback: CallbackQuery, bot: Bot, user_id: int) -
 # PvE (CFR)
 # ──────────────────────────────────────────────
 
-async def enter_pve(bot: Bot, user_id: int, chat_id: int, source_message_id: int | None = None) -> None:
+async def enter_pve(
+    bot: Bot, user_id: int, chat_id: int, source_message_id: int | None = None, test_mode: bool = False
+) -> None:
     store = MatchStore()
     async with user_lock(user_id):
         if await store.load_for_user(user_id) is not None:
@@ -378,10 +385,14 @@ async def enter_pve(bot: Bot, user_id: int, chat_id: int, source_message_id: int
         human_meta = [card_to_meta(c) for c in cards]
 
         name = await _display_name(user_id)
+        opponent_name = "Соперник" if test_mode else "🤖 Бот"
         first_mover = random.choice([user_id, BOT_ID])
         match_id = f"pve:{user_id}"
-        record = build_record(match_id, user_id, BOT_ID, name, "🤖 Бот", human_meta, bot_meta, first_mover)
-        record.vs_bot = True
+        record = build_record(
+            match_id, user_id, BOT_ID, name, opponent_name, human_meta, bot_meta, first_mover
+        )
+        record.vs_bot = not test_mode
+        record.test_mode = test_mode
         cfr_player.create_player(match_id, seed=random.randrange(1 << 30))
         await store.save(record)
 
@@ -408,6 +419,14 @@ async def cmd_fight_ai(message: Message, bot: Bot, user_id: int) -> None:
     await enter_pve(bot, user_id, message.chat.id)
 
 
+@router.message(Command("test_battle"))
+async def cmd_test_battle(message: Message, bot: Bot, user_id: int) -> None:
+    """Admin-only: play a battle vs an AI opponent via the normal battle flow."""
+    if user_id != ADMIN_ID:
+        return
+    await enter_pve(bot, user_id, message.chat.id, test_mode=True)
+
+
 # ──────────────────────────────────────────────
 # BATTLE
 # ──────────────────────────────────────────────
@@ -420,7 +439,7 @@ async def _send_turn_prompt(bot: Bot, record: MatchRecord, store: MatchStore) ->
         await bot.send_message(other, "Ход противника")
 
     if _is_human(record, owner):
-        hint = "" if record.vs_bot else "\n💬 За ход можно отправить одно сообщение сопернику."
+        hint = "" if _has_ai(record) else "\n💬 За ход можно отправить одно сообщение сопернику."
         await bot.send_message(owner, f"Ваш ход{hint}")
         prev = record.player1_msg_id if owner == record.player1 else record.player2_msg_id
         if prev:
@@ -531,7 +550,7 @@ async def _resolve_and_progress(bot: Bot, record: MatchRecord, store: MatchStore
     _cancel_timer(record.match_id)
     resolution = resolve_turn(record)
 
-    if record.vs_bot:
+    if _has_ai(record):
         player = cfr_player.get_player(record.match_id)
         if player is not None:
             if resolution.actor_user == BOT_ID:
@@ -576,7 +595,7 @@ async def _resolve_and_progress(bot: Bot, record: MatchRecord, store: MatchStore
         return
 
     await store.save(record)
-    if record.vs_bot and record.turn_owner == BOT_ID:
+    if _has_ai(record) and record.turn_owner == BOT_ID:
         await _bot_turn(bot, record, store)
     else:
         await _send_turn_prompt(bot, record, store)
@@ -688,6 +707,20 @@ async def _finish_match(
     _cancel_timer(record.match_id)
     store = MatchStore()
 
+    if record.test_mode:
+        human = record.player1
+        text = "🏆 Тестовый бой: победа!" if winner_is_player1 else "💀 Тестовый бой: поражение."
+        if timeout:
+            text += "\nВы не успели выбрать действия"
+        await bot.send_message(human, text)
+        for mid in (record.player1_msg_id, record.player2_msg_id):
+            if mid:
+                await _clear_message(bot, human, mid)
+        await store.delete(record)
+        cfr_player.drop_player(record.match_id)
+        await show_main_menu(bot, human, human)
+        return
+
     if record.vs_bot:
         human = record.player1
         text = "🏆 Вы победили бота!" if winner_is_player1 else "💀 Вы проиграли боту."
@@ -752,7 +785,7 @@ async def relay_comment(message: Message, bot: Bot, user_id: int) -> None:
 
     store = MatchStore()
     record = await store.load_for_user(user_id)
-    if record is None or record.vs_bot or record.turn_owner != user_id:
+    if record is None or _has_ai(record) or record.turn_owner != user_id:
         return
 
     if record.comment_turn == record.state.turn:

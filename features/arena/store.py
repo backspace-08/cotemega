@@ -49,6 +49,7 @@ class MatchRecord:
     player1_msg_id: int | None = None
     player2_msg_id: int | None = None
     vs_bot: bool = False
+    test_mode: bool = False
     pending_attacks: int = 0
     pending_defends: int = 0
     pending_bonuses: int = 0
@@ -103,6 +104,7 @@ class MatchStore:
             "player1_msg_id": "" if record.player1_msg_id is None else str(record.player1_msg_id),
             "player2_msg_id": "" if record.player2_msg_id is None else str(record.player2_msg_id),
             "vs_bot": "1" if record.vs_bot else "0",
+            "test_mode": "1" if record.test_mode else "0",
             "pending_attacks": str(record.pending_attacks),
             "pending_defends": str(record.pending_defends),
             "pending_bonuses": str(record.pending_bonuses),
@@ -136,6 +138,7 @@ class MatchStore:
             player1_msg_id=int(msg1) if msg1 else None,
             player2_msg_id=int(msg2) if msg2 else None,
             vs_bot=data.get("vs_bot") == "1",
+            test_mode=data.get("test_mode") == "1",
             pending_attacks=int(data.get("pending_attacks") or 0),
             pending_defends=int(data.get("pending_defends") or 0),
             pending_bonuses=int(data.get("pending_bonuses") or 0),
