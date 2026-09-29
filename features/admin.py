@@ -59,7 +59,9 @@ def is_admin(event: Message | CallbackQuery) -> bool:
 
 
 async def _quit_if_requested(message: Message, state: FSMContext) -> bool:
-    if (message.text or "").strip().lower() == "quit":
+    # Accept both "quit" and "/quit" (the prompts tell the admin to type /quit).
+    text = (message.text or "").strip().lower().lstrip("/")
+    if text == "quit":
         await message.answer("Выход из команды")
         await state.clear()
         return True
