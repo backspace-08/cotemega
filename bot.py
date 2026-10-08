@@ -25,7 +25,7 @@ async def _season_watcher(bot) -> None:
 
     while True:
         try:
-            charged = await run_decay()
+            charged = await run_decay(bot)
             if charged:
                 logger.info(f"Arena decay applied to {charged} players")
         except Exception as e:  # noqa: BLE001

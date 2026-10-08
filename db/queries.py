@@ -560,13 +560,26 @@ def soft_reset_rating(user_id: int, rating: float, rd: float, vol: float) -> Non
         user.rating_matches = 0
 
 
-def apply_rating_decay(center: float, start_days: int, percent: float, min_amount: int) -> int:
-    """Lose rating for inactivity. Only calibrated players; floor at center.
+def decayed_rating(
+    rating: float, days: int, center: float, percent: float, min_amount: int, floor: float
+) -> float:
+    """Rating after `days` of inactivity decay. Applies below the center too."""
+    per_day = max(min_amount, round(percent * max(0.0, rating - center)))
+    return max(float(floor), rating - per_day * days)
+
+
+def apply_rating_decay(
+    center: float, start_days: int, percent: float, min_amount: int, floor: float
+) -> list[tuple[int, float, float]]:
+    """Lose rating for inactivity. Calibrated players, any current rating.
 
     Idempotent via `last_decay_at`: charges only whole days since the later of
     (last match + start_days) and the previous decay run.
+
+    Returns a list of (user_id, old_rating, new_rating) for players whose rating
+    actually changed.
     """
-    charged = 0
+    charged: list[tuple[int, float, float]] = []
     now = datetime.now(timezone.utc).replace(tzinfo=None)
     with get_session() as session:
         users = session.execute(
@@ -590,10 +603,12 @@ def apply_rating_decay(center: float, start_days: int, percent: float, min_amoun
                 continue
 
             rating = user.rating or center
-            per_day = max(min_amount, round(percent * max(0.0, rating - center)))
-            user.rating = max(float(center), rating - per_day * days)
+            new_rating = decayed_rating(rating, days, center, percent, min_amount, floor)
             user.last_decay_at = now
-            charged += 1
+            if new_rating == rating:
+                continue
+            user.rating = new_rating
+            charged.append((user.user_id, float(rating), float(new_rating)))
     return charged
 
 
