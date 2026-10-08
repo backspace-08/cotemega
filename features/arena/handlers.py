@@ -239,7 +239,7 @@ async def show_bot_menu(callback: CallbackQuery, bot: Bot, user_id: int) -> None
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(
         callback.message.chat.id,
-        f"{main_deck_block(slots)}\n\n{bot_line}\n{human_line}",
+        f"{main_deck_block(slots)}\n\n{bot_line}\n\n{human_line}",
         reply_markup=bot_menu_kb(),
     )
     await callback.answer()

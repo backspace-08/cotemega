@@ -241,7 +241,6 @@ ADMIN_COMMANDS_TEXT = (
     "/season_end — закрыть сезон арены: награды + soft reset + новый сезон\n"
     "/full_reset — полная отчистка прогресса всех игроков\n"
     "/cfr_stats — нагрузка CFR, рейтинг и винрейт бота\n"
-    "/cfr_bench [N] — бенч параллельных решений и памяти\n"
     "/cfr_selftest — проверка CFR против случайной политики\n"
     "/test_battle — тестовый бой против AI (рейтинги не затрагиваются)\n"
     "Все опасные команды требуют ввода фразы подтверждения."
@@ -461,37 +460,6 @@ async def show_cfr_stats(message: Message) -> None:
     )
     bot_line = await run_db(bot_winrate_line)
     await message.answer(cfr_stats.report(active_matches=cfr_player.active_count()) + bot_line + limits)
-
-
-@router.message(Command("cfr_bench"), is_admin)
-async def run_cfr_bench(message: Message) -> None:
-    if not cfr_player.CFR_AVAILABLE:
-        await message.answer("🤖 CFR недоступен (нет _cote_cfr/таблицы)")
-        return
-    parts = (message.text or "").split()
-    n = int(parts[1]) if len(parts) > 1 and parts[1].isdigit() else cfr_stats_cores()
-    await message.answer(f"⏱ Бенч: {n} параллельных решений...")
-    from features.arena.bench import run_bench
-
-    result = await asyncio.to_thread(run_bench, n)
-    if result is None:
-        await message.answer("🤖 CFR недоступен")
-        return
-    await message.answer(
-        f"⏱ <b>CFR bench</b> ({result['bots']} ботов, ядер {result['cores']}, турн 7)\n"
-        f"Последовательно: {result['seq_per_move_ms']:.0f}мс/ход (итого {result['seq_total_ms']:.0f}мс)\n"
-        f"Параллельно: {result['conc_per_move_ms']:.0f}мс/ход (итого {result['conc_wall_ms']:.0f}мс)\n"
-        f"Ускорение: ×{result['speedup']:.2f} (≈1 → GIL держит, ≈ядра → параллельно)\n"
-        f"Память: бот {result['mem_per_bot_mb']:.1f}МБ, пик на решение "
-        f"{result['mem_per_solve_peak_mb']:.1f}МБ\n"
-        f"RSS: база {result['base_rss_mb']:.0f}МБ → пик {result['peak_rss_mb']:.0f}МБ"
-    )
-
-
-def cfr_stats_cores() -> int:
-    from os import cpu_count
-
-    return cpu_count() or 4
 
 
 @router.message(Command("cfr_selftest"), is_admin)

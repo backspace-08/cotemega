@@ -3,8 +3,8 @@
 Records per-move latency and process CPU/peak-RSS so we can estimate how much
 the solver stresses the server and how many concurrent games fit.
 
-Aggregates live in memory (surfaced by `/cfr_stats`), each move is appended to
-`cfr_metrics.log`, and `/cfr_bench` measures parallel scaling + memory per match.
+Aggregates live in memory (surfaced by `/cfr_stats`) and each move is appended
+to `cfr_metrics.log`.
 """
 
 import logging
@@ -111,7 +111,7 @@ class CfrStats:
     def report(self, active_matches: int = 0, turn_seconds: float = 20.0) -> str:
         n_cores = cores()
         if self.count == 0 or (self.avg_cpu_ms <= 0 and self.avg_ms <= 0):
-            capacity = "• пока нет ходов бота — сыграй или запусти /cfr_bench\n"
+            capacity = "• пока нет ходов бота — сыграй бой для оценки\n"
         else:
             cpu_ms = self.avg_cpu_ms or self.avg_ms
             # A solve occupies one core for `cpu_ms`; one PvE game spends one
@@ -132,8 +132,7 @@ class CfrStats:
             "<b>Оценка ёмкости</b> (1 ход бота на игрока каждые "
             f"{turn_seconds:.0f}с):\n"
             f"{capacity}"
-            "<i>Учти GIL: если Rust не отпускает GIL, потолок ≈ 1 ядро. "
-            "Проверь /cfr_bench.</i>"
+            "<i>Учти GIL: если Rust не отпускает GIL, реальный потолок ≈ 1 ядро.</i>"
         )
 
 

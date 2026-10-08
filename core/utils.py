@@ -129,9 +129,10 @@ async def show_main_menu(bot: Bot, chat_id: int, user_id: int) -> None:
 
     data = await run_db(get_user_data, user_id)
     points = data.points if data else 0
+    shards = data.shards if data else 0
     name = (data.first_name or data.username) if data else None
     await bot.send_message(
         chat_id,
-        f"🥷Имя: {escape(name or 'Игрок')}\n💠 Очки: {points}",
+        f"🥷Имя: {escape(name or 'Игрок')}\n💠 Очки: {points}\n🔮 Осколки: {shards}",
         reply_markup=main_menu_kb(),
     )

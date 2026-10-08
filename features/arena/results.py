@@ -54,12 +54,16 @@ def bot_winrate_line(bot: dict | None = None) -> str:
     games = bot["wins"] + bot["losses"]
     winrate = (bot["wins"] / games * 100.0) if games else 0.0
     return (
-        f"🤖 Бот: рейтинг {round(bot['rating'])}, "
-        f"винрейт {winrate:.0f}% ({bot['wins']}/{games})"
+        f"🤖 Бот: рейтинг {round(bot['rating'])}\n"
+        f"🏆 Победы: {bot['wins']} | 💀 Поражения: {bot['losses']}\n"
+        f"📊 Винрейт: {winrate:.0f}% (всего игр: {games})"
     )
 
 
 def human_pve_line(wins: int, losses: int) -> str:
     games = wins + losses
     winrate = (wins / games * 100.0) if games else 0.0
-    return f"📊 Ваш винрейт против бота: {winrate:.0f}% (🏆{wins} / 💀{losses}, игр: {games})"
+    return (
+        f"🏆 Победы: {wins} | 💀 Поражения: {losses}\n"
+        f"📊 Винрейт против бота: {winrate:.0f}% (всего игр: {games})"
+    )
