@@ -34,17 +34,53 @@ def get_type_char(char_type) -> str:
     return TYPE_EMOJI.get(int(char_type), "🚫")
 
 
-def gendered(gender: str, male: str, female: str, neutral: str | None = None) -> str:
-    """Pick a word form for the character gender; unknown -> `neutral` or male(а)."""
+PLURAL_GENDERS = {"plural", "multiple", "duo"}
+
+
+def gendered(
+    gender: str,
+    male: str,
+    female: str,
+    neutral: str | None = None,
+    plural: str | None = None,
+) -> str:
+    """Pick a word form for the character gender.
+
+    `gender` is male | female | plural (multiple/duo accepted as aliases for a
+    card showing several characters); anything else is unknown -> `neutral`
+    (or "male(а)"). For plural without an explicit form, `neutral`/`male` is used.
+    """
     if gender == "male":
         return male
     if gender == "female":
         return female
+    if gender in PLURAL_GENDERS:
+        if plural is not None:
+            return plural
+        return neutral if neutral is not None else male
     return neutral if neutral is not None else f"{male}(а)"
 
 
 def attack_action(gender: str) -> str:
-    return gendered(gender, "атаковал", "атаковала")
+    return gendered(gender, "атаковал", "атаковала", plural="атаковали")
+
+
+def not_attacked(gender: str) -> str:
+    return gendered(
+        gender, "не атаковал", "не атаковала", neutral="не атаковал(а)", plural="не атаковали"
+    )
+
+
+def defeated(gender: str) -> str:
+    return gendered(gender, "побежден", "побеждена", neutral="побежден(а)", plural="побеждены")
+
+
+def spent(gender: str) -> str:
+    return gendered(gender, "потратил", "потратила", neutral="потратил(а)", plural="потратили")
+
+
+def enters_battle(gender: str) -> str:
+    return gendered(gender, "Вступает", "Вступает", neutral="Вступает", plural="Вступают")
 
 
 def loc_rarity(rarity: str) -> str:

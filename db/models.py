@@ -14,13 +14,16 @@ Base = declarative_base()
 # ──────────────────────────────────────────────
 # РОСТ СТАТОВ ПО РЕДКОСТИ (линейный)
 # ──────────────────────────────────────────────
+# Growth per level is the same for hp and atk within a rarity, and decreases
+# with rarity so the rarity advantage shrinks as cards level up (soft scheme:
+# L1 gaps 20/19/17/15/13% -> L10 gaps 15/13/11/9/7%).
 GROWTH = {
-    "common":    {"hp": 0.17, "atk": 0.19},
-    "rare":      {"hp": 0.16, "atk": 0.18},
-    "epic":      {"hp": 0.16, "atk": 0.18},
-    "mythic":    {"hp": 0.14, "atk": 0.16},
-    "legendary": {"hp": 0.13, "atk": 0.15},
-    "special":   {"hp": 0.13, "atk": 0.15},
+    "common":    {"hp": 0.190, "atk": 0.190},
+    "rare":      {"hp": 0.177, "atk": 0.177},
+    "epic":      {"hp": 0.163, "atk": 0.163},
+    "mythic":    {"hp": 0.149, "atk": 0.149},
+    "legendary": {"hp": 0.135, "atk": 0.135},
+    "special":   {"hp": 0.122, "atk": 0.122},
 }
 
 

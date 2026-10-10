@@ -2,7 +2,15 @@
 
 from html import escape
 
-from core.texts import attack_action, gendered, get_type_char
+from core.texts import (
+    attack_action,
+    defeated,
+    enters_battle,
+    gendered,
+    get_type_char,
+    not_attacked,
+    spent,
+)
 from features.arena.adapter import to_character, to_engine_type
 from features.arena.engine import multiplier, per_hit_damage
 from features.arena.service import meta_to_fighter, remaining_actions, side_of
@@ -101,18 +109,22 @@ def action_captions(record: MatchRecord, resolution) -> tuple[str, str]:
     """(caption shown to the attacker, caption shown to the defender)."""
     attacker = resolution.actor_card
     defender = resolution.target_card
-    enemy_word = gendered(attacker.get("gender", "unknown"), "Вражеский", "Вражеская")
-    own_word = gendered(attacker.get("gender", "unknown"), "Ваш", "Ваша")
+    enemy_word = gendered(
+        attacker.get("gender", "unknown"), "Вражеский", "Вражеская", plural="Вражеские"
+    )
+    own_word = gendered(attacker.get("gender", "unknown"), "Ваш", "Ваша", plural="Ваши")
     verb = _action_verb(attacker.get("gender", "unknown"))
 
     if resolution.target_died:
-        health_line = f"\n{defender['name']} побежден ☠"
+        health_line = f"\n{defender['name']} {defeated(defender.get('gender', 'unknown'))} ☠"
     else:
         health_line = f"\nУ {defender['name']} осталось ❤️ {resolution.target_hp_after}"
 
     if resolution.attacks <= 0:
-        own = f"{own_word} <b>{attacker['name']}</b> не атаковал(а)\n<b>{defender['name']}</b> потратил 🛡{resolution.defender_shields}"
-        enemy = f"{enemy_word} <b>{attacker['name']}</b> не атаковал(а)\n<b>{defender['name']}</b> потратил 🛡{resolution.defender_shields}"
+        skip_word = not_attacked(attacker.get("gender", "unknown"))
+        spent_word = spent(defender.get("gender", "unknown"))
+        own = f"{own_word} <b>{attacker['name']}</b> {skip_word}\n<b>{defender['name']}</b> {spent_word} 🛡{resolution.defender_shields}"
+        enemy = f"{enemy_word} <b>{attacker['name']}</b> {skip_word}\n<b>{defender['name']}</b> {spent_word} 🛡{resolution.defender_shields}"
     elif resolution.hits <= 0:
         own = f"Блок! 🛡\n{own_word} <b>{attacker['name']}</b> {verb}\n<b>{defender['name']}</b>\n🔥{resolution.attacks} vs 🛡{resolution.defender_shields}"
         enemy = f"Блок! 🛡\n{enemy_word} <b>{attacker['name']}</b> {verb}\n<b>{defender['name']}</b>\n🔥{resolution.attacks} vs 🛡{resolution.defender_shields}"
@@ -135,7 +147,8 @@ def action_captions(record: MatchRecord, resolution) -> tuple[str, str]:
 
 
 def promotion_caption(card: dict, for_owner: bool) -> str:
-    prefix = "Вступает в бой:" if for_owner else "У противника вступает в бой:"
+    verb = enters_battle(card.get("gender", "unknown"))
+    prefix = f"{verb} в бой:" if for_owner else f"У противника {verb.lower()} в бой:"
     return f"{prefix}\n{card['name']}"
 
 
