@@ -37,8 +37,6 @@ services:
       REDIS_URL: redis://redis:6379/0
     ports:
       - "9080:9080"
-    volumes:
-      - ./data:/app/data
     restart: unless-stopped
 
 volumes:

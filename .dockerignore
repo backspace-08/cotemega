@@ -9,6 +9,9 @@ cfr_metrics.log*
 .env
 .vscode
 
+# Mounted at runtime via compose (./data:/app/data); not needed inside the image.
+data
+
 # Rust build output (rebuilt in the image); keep the private table in context
 cote_cfr/target
 cote_cfr/*.so

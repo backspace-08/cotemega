@@ -7,6 +7,9 @@ arena_battles.json
 venv/
 .vscode
 
+# Characters catalog + card images now live in Cloudflare R2, not in git
+data/
+
 # Private 1v1 CFR table (exclusive) and Rust build artifacts
 cote_cfr/1v1_table.csv
 cote_cfr/1v1_table_old.csv
