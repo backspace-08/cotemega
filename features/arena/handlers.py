@@ -573,10 +573,15 @@ async def _clear_message(bot: Bot, chat_id: int, message_id: int) -> None:
 
 
 async def _send_card(bot: Bot, chat_id: int, image: str, caption: str) -> None:
-    if image and Path(image).exists():
-        await send_character_card(bot, chat_id, Path(image), caption)
-    else:
-        await bot.send_message(chat_id, caption)
+    if image:
+        is_remote = str(image).lower().startswith(("http://", "https://"))
+        if is_remote or Path(image).exists():
+            try:
+                await send_character_card(bot, chat_id, image, caption)
+                return
+            except Exception as e:  # noqa: BLE001
+                logger.error(f"card send failed, falling back to text: {e}")
+    await bot.send_message(chat_id, caption)
 
 
 async def _send_switch_media(bot: Bot, record: MatchRecord, actor_user: int, target_user: int, card: dict) -> None:

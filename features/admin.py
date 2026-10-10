@@ -1,7 +1,9 @@
 import asyncio
 import random
+from html import escape
 
-from aiogram import Bot, Router
+import aiohttp
+from aiogram import Bot, F, Router
 from aiogram.filters import Command, StateFilter
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
@@ -18,21 +20,43 @@ from config import (
     RESET_BOT_PHRASE,
     SEASON_END_PHRASE,
     START_SPINS,
+    card_image,
 )
-from core.callbacks import AdminShardsCB
-from core.keyboards import admin_shards_kb
+from core.callbacks import AdminShardsCB, AdminUsersCB
+from core.keyboards import (
+    admin_char_kb,
+    admin_char_rarity_kb,
+    admin_shards_kb,
+    admin_user_currency_kb,
+    admin_user_kb,
+    admin_users_list_kb,
+)
 from core.logger import logger
 from core.texts import character_caption
-from core.utils import run_db, safe_delete_message, send_character_card
+from core.utils import (
+    edit_character_card,
+    run_db,
+    safe_delete_message,
+    safe_edit_text,
+    send_character_card,
+)
 from features.arena import cfr_player
 from features.arena.metrics import stats as cfr_stats
 from features.arena.results import bot_winrate_line
+from seed import sync_characters
 from db.queries import (
     get_all_user_ids,
     get_character_by_id,
+    get_character_catalog,
+    get_rarity_counts,
+    get_user_character,
+    get_user_data,
     get_user_id_by_username,
+    get_user_rarity_counts,
+    get_users_page,
     get_username,
     grant_character,
+    grant_character_or_level,
     reset_all_progress,
     reset_all_ratings,
     reset_bot_stats,
@@ -52,6 +76,8 @@ class AdminForm(StatesGroup):
     all_currency_amount = State()
     broadcast_text = State()
     confirm_action = State()
+    users_amount = State()
+    users_message = State()
 
 
 def is_admin(event: Message | CallbackQuery) -> bool:
@@ -70,6 +96,263 @@ async def _quit_if_requested(message: Message, state: FSMContext) -> bool:
 
 async def _username_or_id(user_id: int) -> str:
     return await run_db(get_username, user_id) or str(user_id)
+
+
+# ──────────────────────────────────────────────
+# /users — user browser
+# ──────────────────────────────────────────────
+
+USERS_PER_PAGE = 5
+_CURRENCY_ICON = {"shards": "🔮", "spins": "🎴", "super_spins": "🧧"}
+_CURRENCY_LABEL = {"shards": "осколков", "spins": "круток", "super_spins": "супер-круток"}
+
+
+def _display_name(data, user_id: int) -> str:
+    if data is not None:
+        if data.first_name:
+            return data.first_name
+        if data.username:
+            return f"@{data.username}"
+    return str(user_id)
+
+
+async def _users_page_view(page: int):
+    data = await run_db(get_users_page, page, USERS_PER_PAGE)
+    text = (
+        "👥 <b>Пользователи</b>\n"
+        f"Страница {data['page'] + 1}/{data['total_pages']} · всего {data['total']}"
+    )
+    return text, admin_users_list_kb(data["items"], data["page"], data["total_pages"])
+
+
+async def _user_view(user_id: int, page: int, note: str = ""):
+    data = await run_db(get_user_data, user_id)
+    if data is None:
+        page_data = await run_db(get_users_page, page, USERS_PER_PAGE)
+        return (
+            "❌ Пользователь не найден",
+            admin_users_list_kb(page_data["items"], page_data["page"], page_data["total_pages"]),
+        )
+    username = f"@{data.username}" if data.username else "—"
+    created = data.created_at.strftime("%d.%m.%Y") if data.created_at else "—"
+    text = (
+        f"👤 <b>{escape(data.first_name or 'Игрок')}</b>\n"
+        f"🔗 {escape(username)}\n"
+        f"🆔 <code>{data.user_id}</code>\n"
+        f"🔮 Осколки: {data.shards}\n"
+        f"🎴 Крутки: {data.spins}\n"
+        f"🧧 Супер-крутки: {data.super_spins}\n"
+        f"📅 Регистрация: {created}"
+    )
+    if note:
+        text += f"\n\n{note}"
+    return text, admin_user_kb(user_id, page)
+
+
+async def _render_text(bot: Bot, callback: CallbackQuery, text: str, kb) -> None:
+    """Edit the current text message in place; fall back to resend if it's media."""
+    msg = callback.message
+    if msg.text is not None:
+        await safe_edit_text(bot, msg.chat.id, msg.message_id, text, kb)
+    else:
+        await safe_delete_message(bot, msg.chat.id, msg.message_id)
+        await bot.send_message(msg.chat.id, text, reply_markup=kb)
+
+
+async def _render_admin_char(bot: Bot, callback: CallbackQuery, user_id: int, page: int, rarity: str, cpage: int) -> bool:
+    catalog = await run_db(get_character_catalog, rarity, user_id)
+    if not catalog:
+        return False
+    cpage %= len(catalog)
+    entry = catalog[cpage]
+    card = entry["card"]
+    owned = entry["owned"]
+    level = entry["level"]
+    kb = admin_char_kb(user_id, page, rarity, card.char_id, cpage, len(catalog), owned, level)
+    title = f"✅ Есть у игрока · Lv.{level}" if owned else "🆕 Нет у игрока"
+    caption = character_caption(card, title=title)
+    msg = callback.message
+    if msg.photo or msg.animation:
+        await edit_character_card(bot, msg.chat.id, msg.message_id, card.image_path, caption, kb)
+    else:
+        await safe_delete_message(bot, msg.chat.id, msg.message_id)
+        await send_character_card(bot, msg.chat.id, card.image_path, caption, kb)
+    return True
+
+
+@router.message(Command("users"), is_admin)
+async def users_start(message: Message) -> None:
+    text, kb = await _users_page_view(0)
+    await message.answer(text, reply_markup=kb)
+
+
+@router.callback_query(AdminUsersCB.filter(F.action == "list"), is_admin)
+async def users_list(callback: CallbackQuery, callback_data: AdminUsersCB, bot: Bot) -> None:
+    text, kb = await _users_page_view(callback_data.page)
+    await _render_text(bot, callback, text, kb)
+    await callback.answer()
+
+
+@router.callback_query(AdminUsersCB.filter(F.action == "user"), is_admin)
+async def users_view(callback: CallbackQuery, callback_data: AdminUsersCB, bot: Bot) -> None:
+    text, kb = await _user_view(callback_data.user_id, callback_data.page)
+    await _render_text(bot, callback, text, kb)
+    await callback.answer()
+
+
+@router.callback_query(AdminUsersCB.filter(F.action == "currency"), is_admin)
+async def users_currency(callback: CallbackQuery, callback_data: AdminUsersCB, bot: Bot) -> None:
+    data = await run_db(get_user_data, callback_data.user_id)
+    text = (
+        f"💰 Валюта для <b>{escape(_display_name(data, callback_data.user_id))}</b> "
+        f"(id <code>{callback_data.user_id}</code>)"
+    )
+    await _render_text(
+        bot, callback, text, admin_user_currency_kb(callback_data.user_id, callback_data.page)
+    )
+    await callback.answer()
+
+
+@router.callback_query(AdminUsersCB.filter(F.action == "curpick"), is_admin)
+async def users_curpick(
+    callback: CallbackQuery, callback_data: AdminUsersCB, state: FSMContext, bot: Bot
+) -> None:
+    if callback_data.field not in _CURRENCY_ICON:
+        await callback.answer("Неизвестная валюта", show_alert=True)
+        return
+    data = await run_db(get_user_data, callback_data.user_id)
+    await state.set_state(AdminForm.users_amount)
+    await state.update_data(
+        target_user_id=callback_data.user_id, field=callback_data.field, page=callback_data.page
+    )
+    await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
+    await bot.send_message(
+        ADMIN_ID,
+        f"Введите количество {_CURRENCY_LABEL[callback_data.field]} для "
+        f"{_display_name(data, callback_data.user_id)} (id {callback_data.user_id}) или /quit",
+    )
+    await callback.answer()
+
+
+@router.message(StateFilter(AdminForm.users_amount), is_admin)
+async def users_amount(message: Message, state: FSMContext) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    text = (message.text or "").strip()
+    if not text.lstrip("-").isdigit():
+        await message.answer("❌ Введите целое число или /quit")
+        return
+    await state.update_data(amount=int(text))
+    await state.set_state(AdminForm.users_message)
+    await message.answer("Введите сообщение игроку (или «нет», чтобы без него). /quit — отмена.")
+
+
+@router.message(StateFilter(AdminForm.users_message), is_admin)
+async def users_message_finish(message: Message, state: FSMContext, bot: Bot) -> None:
+    if await _quit_if_requested(message, state):
+        return
+    text = (message.text or "").strip()
+    note = "" if text.lower() in ("нет", "none", "-") else text
+    data = await state.get_data()
+    await state.clear()
+
+    user_id = int(data["target_user_id"])
+    field = data["field"]
+    amount = int(data["amount"])
+    page = int(data.get("page", 0))
+
+    await run_db(update_currency, user_id, field, amount)
+    icon = _CURRENCY_ICON[field]
+
+    try:
+        msg = f"🎁 На ваш аккаунт поступило {amount} {icon}"
+        if note:
+            msg += f"\n{note}"
+        await bot.send_message(user_id, msg)
+    except Exception as e:  # noqa: BLE001
+        logger.error(f"users: не удалось уведомить {user_id}: {e}")
+
+    note_line = f"✅ Начислено {amount} {icon}"
+    if note:
+        note_line += f"\n💬 {escape(note)}"
+    view_text, kb = await _user_view(user_id, page, note=note_line)
+    await message.answer(view_text, reply_markup=kb)
+
+
+@router.callback_query(AdminUsersCB.filter(F.action == "char"), is_admin)
+async def users_char(callback: CallbackQuery, callback_data: AdminUsersCB, bot: Bot) -> None:
+    if not callback_data.rarity:
+        total_counts = await run_db(get_rarity_counts)
+        user_counts = await run_db(get_user_rarity_counts, callback_data.user_id)
+        text = f"🎴 Выберите редкость для id <code>{callback_data.user_id}</code>"
+        await _render_text(
+            bot,
+            callback,
+            text,
+            admin_char_rarity_kb(
+                callback_data.user_id, callback_data.page, user_counts, total_counts
+            ),
+        )
+        await callback.answer()
+        return
+
+    ok = await _render_admin_char(
+        bot, callback, callback_data.user_id, callback_data.page, callback_data.rarity, 0
+    )
+    if not ok:
+        await callback.answer("Нет персонажей этой редкости", show_alert=True)
+        return
+    await callback.answer()
+
+
+@router.callback_query(AdminUsersCB.filter(F.action == "charnav"), is_admin)
+async def users_char_nav(callback: CallbackQuery, callback_data: AdminUsersCB, bot: Bot) -> None:
+    ok = await _render_admin_char(
+        bot,
+        callback,
+        callback_data.user_id,
+        callback_data.page,
+        callback_data.rarity,
+        callback_data.cpage,
+    )
+    if not ok:
+        await callback.answer("Нет персонажей", show_alert=True)
+        return
+    await callback.answer()
+
+
+@router.callback_query(AdminUsersCB.filter(F.action == "charpick"), is_admin)
+async def users_char_pick(callback: CallbackQuery, callback_data: AdminUsersCB, bot: Bot) -> None:
+    base = await run_db(get_character_by_id, callback_data.char_id)
+    if base is None:
+        await callback.answer("Персонаж не найден", show_alert=True)
+        return
+
+    status, level = await run_db(
+        grant_character_or_level, callback_data.user_id, callback_data.char_id
+    )
+
+    if status == "max":
+        await callback.answer("У персонажа уже максимальный уровень", show_alert=True)
+    else:
+        card = await run_db(get_user_character, callback_data.user_id, callback_data.char_id) or base
+        title = "🎁 Вам выдан персонаж:" if status == "new" else "🎁 Ваш персонаж улучшен:"
+        try:
+            await send_character_card(
+                bot, callback_data.user_id, card.image_path, character_caption(card, title=title)
+            )
+        except Exception as e:  # noqa: BLE001
+            logger.error(f"users: не удалось уведомить {callback_data.user_id}: {e}")
+        await callback.answer("✅ Выдан" if status == "new" else f"✅ Уровень повышен до {level}")
+
+    await _render_admin_char(
+        bot,
+        callback,
+        callback_data.user_id,
+        callback_data.page,
+        callback_data.rarity,
+        callback_data.cpage,
+    )
 
 
 # ──────────────────────────────────────────────
@@ -230,6 +513,10 @@ ADMIN_COMMANDS_TEXT = (
     "<b>🛠 Админ-команды</b>\n"
     "/admin_commands — этот список\n"
     "/get_id — узнать ID по @username\n"
+    "/sync_chars — синк каталога персонажей из R2 + проверка артов\n"
+    "/add_char — добавить персонажа (арт + статы) прямо через бота\n"
+    "/edit_char &lt;имя&gt; — изменить арт/имя/статы/тип/пол персонажа (по русскому имени)\n"
+    "/users — браузер игроков: карточки, выдача валюты и персонажей\n"
     "/give_shards — выдать осколки одному игроку (кнопки или вручную + описание)\n"
     "/give_char — выдать себе персонажа по ID из БД\n"
     "/give_all — выдать валюту ВСЕМ (например «500» = осколки, «500 spins», «500 super_spins»)\n"
@@ -245,6 +532,71 @@ ADMIN_COMMANDS_TEXT = (
     "/test_battle — тестовый бой против AI (рейтинги не затрагиваются)\n"
     "Все опасные команды требуют ввода фразы подтверждения."
 )
+
+
+# ──────────────────────────────────────────────
+# /sync_chars — pull the catalog from R2 + verify card art
+# ──────────────────────────────────────────────
+
+async def _check_card_images(entries: list[dict]) -> list[dict]:
+    """GET each card URL (1 byte) and return the ones that aren't reachable."""
+    failures: list[dict] = []
+    timeout = aiohttp.ClientTimeout(total=15)
+    headers = {"User-Agent": "megaverse-bot/1.0", "Range": "bytes=0-0"}
+    sem = asyncio.Semaphore(12)
+
+    async with aiohttp.ClientSession(headers=headers, timeout=timeout) as session:
+        async def check(entry: dict) -> None:
+            async with sem:
+                try:
+                    async with session.get(entry["url"]) as response:
+                        if response.status not in (200, 206):
+                            failures.append({**entry, "reason": f"HTTP {response.status}"})
+                except Exception as exc:  # noqa: BLE001
+                    failures.append({**entry, "reason": type(exc).__name__})
+
+        await asyncio.gather(*(check(entry) for entry in entries))
+    return failures
+
+
+@router.message(Command("sync_chars"), is_admin)
+async def sync_chars_cmd(message: Message) -> None:
+    await message.answer("🔄 Синхронизирую каталог из R2 и проверяю арты...")
+    try:
+        summary = await run_db(sync_characters)
+    except Exception as exc:  # noqa: BLE001
+        logger.error(f"sync_chars failed: {exc}")
+        await message.answer(f"❌ Не удалось синхронизировать каталог: {exc}")
+        return
+
+    entries: list[dict] = []
+    malformed: list[str] = []
+    for char in summary["characters"]:
+        filename, rarity = char.get("filename"), char.get("rarity")
+        name = char.get("name_en", "?")
+        if not filename or not rarity:
+            malformed.append(f"• {name} — нет filename/rarity")
+            continue
+        path = f"{rarity}/{filename}"
+        entries.append({"name": name, "path": path, "url": card_image(path)})
+
+    failures = await _check_card_images(entries)
+
+    lines = [f"✅ Синк: {summary['total']} персонажей, удалено устаревших: {summary['removed']}"]
+    if malformed:
+        lines.append(f"\n⚠️ Кривые записи в JSON: {len(malformed)}")
+        lines += malformed[:15]
+        if len(malformed) > 15:
+            lines.append(f"… и ещё {len(malformed) - 15}")
+    if failures:
+        lines.append(f"\n🖼 Битые/отсутствующие арты: {len(failures)}/{len(entries)}")
+        for fail in failures[:20]:
+            lines.append(f"• {fail['name']} — {fail['path']} ({fail['reason']})")
+        if len(failures) > 20:
+            lines.append(f"… и ещё {len(failures) - 20}")
+    else:
+        lines.append(f"\n🖼 Все арты на месте ({len(entries)} шт).")
+    await message.answer("\n".join(lines))
 
 
 @router.message(Command("admin_commands"), is_admin)

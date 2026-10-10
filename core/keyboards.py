@@ -4,6 +4,7 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 
 from config import MAX_CHARACTER_LEVEL
 from core.callbacks import (
+    AdminUsersCB,
     BuyCB,
     CharPageCB,
     DonateCB,
@@ -15,7 +16,7 @@ from core.callbacks import (
     RarityCB,
     TopCB,
 )
-from core.texts import RARITY_EMOJI, level_cost
+from core.texts import RARITY_EMOJI, RARITY_ORDER, level_cost
 
 
 def main_menu_kb() -> InlineKeyboardMarkup:
@@ -167,4 +168,139 @@ def admin_shards_kb(user_id: int) -> InlineKeyboardMarkup:
         builder.button(text=f"{amount}🔮", callback_data=AdminShardsCB(amount=amount, user_id=user_id))
     builder.button(text="Ввести вручную", callback_data=AdminShardsCB(amount="hand", user_id=user_id))
     builder.adjust(2, 2, 1)
+    return builder.as_markup()
+
+
+RARITY_LABELS = {
+    "common": "Обычные",
+    "rare": "Редкие",
+    "epic": "Эпические",
+    "mythic": "Мифические",
+    "legendary": "Легендарные",
+    "special": "Специальные",
+}
+
+
+def admin_users_list_kb(users: list[dict], page: int, total_pages: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for user in users:
+        name = user["first_name"] or (f"@{user['username']}" if user["username"] else str(user["user_id"]))
+        builder.button(
+            text=name[:60],
+            callback_data=AdminUsersCB(action="user", user_id=user["user_id"], page=page),
+        )
+    builder.adjust(1)
+
+    nav = []
+    if total_pages > 1:
+        nav.append(InlineKeyboardButton(text="⬅️", callback_data=AdminUsersCB(action="list", page=page - 1).pack()))
+    nav.append(InlineKeyboardButton(text=f"{page + 1}/{total_pages}", callback_data=NoopCB().pack()))
+    if total_pages > 1:
+        nav.append(InlineKeyboardButton(text="➡️", callback_data=AdminUsersCB(action="list", page=page + 1).pack()))
+    builder.row(*nav)
+    return builder.as_markup()
+
+
+def admin_user_kb(user_id: int, page: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="💰 Валюта", callback_data=AdminUsersCB(action="currency", user_id=user_id, page=page))
+    builder.button(text="🎴 Дать персонажа", callback_data=AdminUsersCB(action="char", user_id=user_id, page=page))
+    builder.button(text="↩️ К списку", callback_data=AdminUsersCB(action="list", page=page))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_user_currency_kb(user_id: int, page: int) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for field, label in (
+        ("shards", "🔮 Осколки"),
+        ("spins", "🎴 Крутки"),
+        ("super_spins", "🧧 Супер-крутки"),
+    ):
+        builder.button(
+            text=label,
+            callback_data=AdminUsersCB(action="curpick", user_id=user_id, page=page, field=field),
+        )
+    builder.button(text="↩️ Назад", callback_data=AdminUsersCB(action="user", user_id=user_id, page=page))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_char_rarity_kb(
+    user_id: int, page: int, user_counts: dict, total_counts: dict
+) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    for rarity in RARITY_ORDER:
+        total = total_counts.get(rarity, 0)
+        if not total:
+            continue
+        builder.button(
+            text=f"{RARITY_EMOJI[rarity]} {RARITY_LABELS[rarity]} {user_counts.get(rarity, 0)}/{total}",
+            callback_data=AdminUsersCB(action="char", user_id=user_id, page=page, rarity=rarity),
+        )
+    builder.button(text="↩️ Назад", callback_data=AdminUsersCB(action="user", user_id=user_id, page=page))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def admin_char_kb(
+    user_id: int,
+    page: int,
+    rarity: str,
+    char_id: int,
+    cpage: int,
+    total_pages: int,
+    owned: bool,
+    level: int,
+) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    nav = []
+    if total_pages > 1:
+        nav.append(
+            InlineKeyboardButton(
+                text="⬅️",
+                callback_data=AdminUsersCB(
+                    action="charnav", user_id=user_id, page=page, rarity=rarity, cpage=cpage - 1
+                ).pack(),
+            )
+        )
+    nav.append(InlineKeyboardButton(text=f"{cpage + 1}/{total_pages}", callback_data=NoopCB().pack()))
+    if total_pages > 1:
+        nav.append(
+            InlineKeyboardButton(
+                text="➡️",
+                callback_data=AdminUsersCB(
+                    action="charnav", user_id=user_id, page=page, rarity=rarity, cpage=cpage + 1
+                ).pack(),
+            )
+        )
+    builder.row(*nav)
+    if owned and level >= MAX_CHARACTER_LEVEL:
+        builder.row(
+            InlineKeyboardButton(
+                text=f"👑 Максимальный уровень ({MAX_CHARACTER_LEVEL})",
+                callback_data=NoopCB().pack(),
+            )
+        )
+    else:
+        builder.row(
+            InlineKeyboardButton(
+                text="⬆️ Прокачать персонажа" if owned else "🎁 Дать персонажа",
+                callback_data=AdminUsersCB(
+                    action="charpick", user_id=user_id, page=page, rarity=rarity, char_id=char_id
+                ).pack(),
+            )
+        )
+    builder.row(
+        InlineKeyboardButton(
+            text="↩️ К редкостям",
+            callback_data=AdminUsersCB(action="char", user_id=user_id, page=page).pack(),
+        )
+    )
+    builder.row(
+        InlineKeyboardButton(
+            text="👤 К пользователю",
+            callback_data=AdminUsersCB(action="user", user_id=user_id, page=page).pack(),
+        )
+    )
     return builder.as_markup()

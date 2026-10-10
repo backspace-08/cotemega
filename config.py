@@ -8,9 +8,32 @@ load_dotenv()
 MODE = os.getenv('MODE', 'production')
 
 BASE_DIR = Path(__file__).parent
-DATA_DIR = BASE_DIR / 'data'
-DATA_DIR.mkdir(exist_ok=True)
-CHARS_IMAGES_DIR = DATA_DIR
+
+# ── Карточки/каталог в Cloudflare R2 (публичный бакет) ──
+R2_PUBLIC_BASE_URL = os.getenv('R2_PUBLIC_BASE_URL', '').rstrip('/')
+CHARACTERS_URL = os.getenv('CHARACTERS_URL', '')
+# Картинки лежат рядом с characters.json; при необходимости переопредели явно.
+CARD_IMAGES_BASE_URL = os.getenv('CARD_IMAGES_BASE_URL', '').rstrip('/') or (
+    CHARACTERS_URL.rsplit('/', 1)[0] if CHARACTERS_URL else ''
+)
+
+# Запись в R2 (S3-совместимый API) — для добавления/правки персонажей через бота.
+R2_ACCOUNT_ID = os.getenv('R2_ACCOUNT_ID', '')
+R2_ACCESS_KEY_ID = os.getenv('R2_ACCESS_KEY_ID', '')
+R2_SECRET_ACCESS_KEY = os.getenv('R2_SECRET_ACCESS_KEY', '')
+R2_BUCKET = os.getenv('R2_BUCKET', '')
+R2_ENDPOINT = os.getenv('R2_ENDPOINT', '').rstrip('/') or (
+    f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com" if R2_ACCOUNT_ID else ''
+)
+R2_PREFIX = os.getenv('R2_PREFIX', 'data/cote').strip('/')
+R2_WRITE_ENABLED = bool(R2_ACCESS_KEY_ID and R2_SECRET_ACCESS_KEY and R2_BUCKET and R2_ENDPOINT)
+
+
+def card_image(relative: str) -> str:
+    """Public R2 URL for a card image."""
+    if not CARD_IMAGES_BASE_URL:
+        raise RuntimeError("CARD_IMAGES_BASE_URL (или CHARACTERS_URL) не настроен")
+    return f"{CARD_IMAGES_BASE_URL}/{str(relative).lstrip('/')}"
 
 if MODE == 'local':
     BOT_TOKEN = os.getenv('LOCAL_BOT_TOKEN', '')
@@ -110,7 +133,7 @@ SHARD_MAP = {
 }
 
 # ── Арена ──
-ARENA_TURN_TIMEOUT = 60            # секунд на ход
+ARENA_TURN_TIMEOUT = int(os.getenv('ARENA_TURN_TIMEOUT', '60'))  # секунд на ход
 ARENA_WARN_BEFORE = int(os.getenv('ARENA_WARN_BEFORE', '15'))  # предупреждение за N сек
 ARENA_COMMENTS_PER_TURN = int(os.getenv('ARENA_COMMENTS_PER_TURN', '2'))  # сообщений на игрока за полуход
 ARENA_CALIBRATION_MATCHES = 10     # матчей до показа рейтинга
@@ -165,7 +188,3 @@ LAVA_API_KEY = os.getenv('LAVA_API_KEY', '')
 LAVA_WEBHOOK_SECRET = os.getenv('LAVA_WEBHOOK_SECRET', '')
 LAVA_OFFER_ID = os.getenv('LAVA_OFFER_ID', '')
 LAVA_WH_URL = os.getenv('LAVA_WH_URL', '')
-
-
-
-os.makedirs(CHARS_IMAGES_DIR, exist_ok=True)

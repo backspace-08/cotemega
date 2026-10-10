@@ -1,7 +1,6 @@
 """Synchronous data-access layer. Every function opens its own session."""
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
 
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy import update as sql_update
@@ -10,8 +9,9 @@ from config import (
     ARENA_CALIBRATION_MATCHES,
     ARENA_RATING_CENTER,
     ARENA_SEASON_WEEKS,
-    CHARS_IMAGES_DIR,
+    MAX_CHARACTER_LEVEL,
     START_SPINS,
+    card_image,
 )
 from db.models import (
     ArenaBot,
@@ -60,7 +60,7 @@ class CharacterBase:
     gender: str
     base_hp: int
     base_attack: int
-    image_path: Path
+    image_path: str
 
 
 @dataclass
@@ -70,7 +70,7 @@ class CharacterCard:
     translation: str
     rarity: str
     type: int
-    image_path: Path
+    image_path: str
     health: int
     attack: int
     level: int = 1
@@ -241,7 +241,7 @@ def _card_from_row(row, level: int) -> CharacterCard:
         rarity=row.rarity,
         type=int(row.type or 0),
         gender=row.gender or "unknown",
-        image_path=CHARS_IMAGES_DIR / row.image_path,
+        image_path=card_image(row.image_path),
         health=stats["hp"],
         attack=stats["attack"],
         level=level,
@@ -259,6 +259,31 @@ def get_owned_characters(user_id: int, rarity: str | None = None) -> list[Charac
         if rarity:
             stmt = stmt.where(Character.rarity == rarity)
         return [_card_from_row(char, level) for char, level in session.execute(stmt).all()]
+
+
+def get_character_catalog(rarity: str, user_id: int) -> list[dict]:
+    """All characters of a rarity, annotated with whether/how `user_id` owns them.
+
+    Each entry: {"card": CharacterCard (at the owned level, else level 1),
+    "owned": bool, "level": int}.
+    """
+    with get_session() as session:
+        rows = session.execute(
+            select(Character, UserCharacter.level)
+            .outerjoin(
+                UserCharacter,
+                and_(
+                    UserCharacter.char_id == Character.char_id,
+                    UserCharacter.user_id == user_id,
+                ),
+            )
+            .where(Character.rarity == rarity)
+            .order_by(Character.char_id)
+        ).all()
+    return [
+        {"card": _card_from_row(char, level or 1), "owned": level is not None, "level": level or 1}
+        for char, level in rows
+    ]
 
 
 def get_user_character(user_id: int, char_id: int) -> CharacterCard | None:
@@ -295,6 +320,27 @@ def grant_character(user_id: int, char_id: int, level: int = 1) -> bool:
         return True
 
 
+def grant_character_or_level(user_id: int, char_id: int) -> tuple[str, int]:
+    """Give the character, or raise its level if the user already owns it.
+
+    Returns (status, level) where status is 'new' | 'upgraded' | 'max'.
+    """
+    with get_session() as session:
+        instance = session.execute(
+            select(UserCharacter).where(
+                UserCharacter.user_id == user_id,
+                UserCharacter.char_id == char_id,
+            )
+        ).scalar_one_or_none()
+        if instance is None:
+            session.add(UserCharacter(user_id=user_id, char_id=char_id, level=1))
+            return ("new", 1)
+        if instance.level >= MAX_CHARACTER_LEVEL:
+            return ("max", instance.level)
+        instance.level += 1
+        return ("upgraded", instance.level)
+
+
 def get_all_character_bases() -> list[CharacterBase]:
     with get_session() as session:
         chars = session.execute(select(Character)).scalars().all()
@@ -307,7 +353,7 @@ def get_all_character_bases() -> list[CharacterBase]:
                 gender=c.gender or "unknown",
                 base_hp=int(c.base_hp or 0),
                 base_attack=int(c.base_attack or 0),
-                image_path=CHARS_IMAGES_DIR / c.image_path,
+                image_path=card_image(c.image_path),
             )
             for c in chars
         ]
@@ -497,6 +543,30 @@ def get_top_players(
             if row:
                 result["user_position"] = {"position": row.pos, "name": row.name, "points": row.value}
         return result
+
+
+def get_users_page(page: int = 0, limit: int = 5, order_col: str = "rating") -> dict:
+    """A page of users sorted by `order_col` (desc), with wrap-around paging."""
+    col = getattr(User, order_col)
+    with get_session() as session:
+        total = session.execute(select(func.count()).select_from(User)).scalar() or 0
+        total_pages = max(1, (total + limit - 1) // limit)
+        page = page % total_pages
+        rows = session.execute(
+            select(User.user_id, User.username, User.first_name, col)
+            .order_by(col.desc().nulls_last(), User.user_id)
+            .offset(page * limit)
+            .limit(limit)
+        ).all()
+    return {
+        "page": page,
+        "total": total,
+        "total_pages": total_pages,
+        "items": [
+            {"user_id": r[0], "username": r[1], "first_name": r[2], "rating": r[3] or 1000.0}
+            for r in rows
+        ],
+    }
 
 
 # ──────────────────────────────────────────────

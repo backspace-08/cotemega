@@ -49,6 +49,21 @@ class AdminShardsCB(CallbackData, prefix="adm_shards"):
     user_id: int
 
 
+class AdminUsersCB(CallbackData, prefix="ausr"):
+    action: str  # list | user | currency | curpick | char | charnav | charpick
+    user_id: int = 0
+    page: int = 0  # users list page
+    cpage: int = 0  # character page within a rarity
+    field: str = ""  # shards | spins | super_spins
+    rarity: str = ""
+    char_id: int = 0
+
+
+class AdminCharCB(CallbackData, prefix="achar"):
+    action: str  # rarity | type | gender | confirm | cancel | editfield
+    value: str = ""
+
+
 class NoopCB(CallbackData, prefix="noop"):
     pass
 

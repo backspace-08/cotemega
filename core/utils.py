@@ -59,39 +59,51 @@ async def safe_delete_message(bot: Bot, chat_id: int, message_id: int) -> bool:
         return False
 
 
-def _is_animated(path: Path) -> bool:
-    return path.suffix.lower() in ANIMATED_EXTENSIONS
+def _is_remote(image) -> bool:
+    return str(image).lower().startswith(("http://", "https://"))
+
+
+def _is_animated(image) -> bool:
+    path = str(image).split("?", 1)[0]
+    return Path(path).suffix.lower() in ANIMATED_EXTENSIONS
+
+
+def _media_source(image):
+    """Telegram accepts either a URL or an FSInputFile for photo/animation."""
+    return str(image) if _is_remote(image) else FSInputFile(Path(image))
 
 
 async def send_character_card(
     bot: Bot,
     chat_id: int,
-    image_path: Path,
+    image_path,
     caption: str,
     reply_markup: InlineKeyboardMarkup | None = None,
 ) -> None:
-    image_path = Path(image_path)
-    file = FSInputFile(image_path)
-    if _is_animated(image_path):
-        await bot.send_animation(chat_id, animation=file, caption=caption, reply_markup=reply_markup)
-    else:
-        await bot.send_photo(chat_id, photo=file, caption=caption, reply_markup=reply_markup)
+    media = _media_source(image_path)
+    try:
+        if _is_animated(image_path):
+            await bot.send_animation(chat_id, animation=media, caption=caption, reply_markup=reply_markup)
+        else:
+            await bot.send_photo(chat_id, photo=media, caption=caption, reply_markup=reply_markup)
+    except TelegramBadRequest as e:
+        logger.error(f"card image unavailable ({e}); sending text fallback")
+        await bot.send_message(chat_id, caption, reply_markup=reply_markup)
 
 
 async def edit_character_card(
     bot: Bot,
     chat_id: int,
     message_id: int,
-    image_path: Path,
+    image_path,
     caption: str,
     reply_markup: InlineKeyboardMarkup | None = None,
 ) -> None:
-    image_path = Path(image_path)
-    file = FSInputFile(image_path)
+    media_source = _media_source(image_path)
     if _is_animated(image_path):
-        media = InputMediaAnimation(media=file, caption=caption)
+        media = InputMediaAnimation(media=media_source, caption=caption)
     else:
-        media = InputMediaPhoto(media=file, caption=caption)
+        media = InputMediaPhoto(media=media_source, caption=caption)
     try:
         await bot.edit_message_media(
             chat_id=chat_id,
@@ -100,8 +112,13 @@ async def edit_character_card(
             reply_markup=reply_markup,
         )
     except TelegramBadRequest as e:
-        if not _is_ignorable_edit_error(e):
-            raise
+        if _is_ignorable_edit_error(e):
+            return
+        # Missing/broken image (or the target message isn't media): resend the
+        # card from scratch; send_character_card falls back to text if needed.
+        logger.error(f"card edit failed ({e}); resending")
+        await safe_delete_message(bot, chat_id, message_id)
+        await send_character_card(bot, chat_id, image_path, caption, reply_markup)
 
 
 async def safe_edit_text(
