@@ -25,8 +25,9 @@ def setup_dispatcher() -> None:
         gacha,
         menu,
         profile,
+        shop,
         top,
     )
 
-    for module in (menu, gacha, characters, profile, top, exchange, donate, admin, admin_chars, arena):
+    for module in (menu, gacha, characters, profile, top, exchange, donate, shop, admin, admin_chars, arena):
         dp.include_router(module.router)

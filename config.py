@@ -147,6 +147,23 @@ ARENA_RATING_CENTER = 1000         # якорь шкалы Glicko-2
 ARENA_SEASON_WEEKS = int(os.getenv('ARENA_SEASON_WEEKS', '3'))  # длина сезона
 START_SPINS = int(os.getenv('START_SPINS', '10'))               # стартовые крутки (новичок / после сброса)
 
+# ── Магазин ──
+SHOP_MIN_CARDS = int(os.getenv('SHOP_MIN_CARDS', '30'))         # доступ: не меньше N карточек
+SHOP_SLOTS = int(os.getenv('SHOP_SLOTS', '3'))                  # лотов в день
+SHOP_DISCOUNT = float(os.getenv('SHOP_DISCOUNT', '0.30'))       # скидка на прокачку (кроме спешлов)
+SHOP_SPECIAL_COST = int(os.getenv('SHOP_SPECIAL_COST', '400'))  # спешл: фикс. цена за уровень
+SHOP_RESET_HOUR_UTC = int(os.getenv('SHOP_RESET_HOUR_UTC', '0'))  # час сброса ротации (UTC)
+# Глобальные веса редкостей для дневной ротации (одинаковы для всех).
+# Подобрано так, чтобы спешл появлялся ~12 раз за 90 дней.
+SHOP_RARITY_WEIGHTS = {
+    'common': 400,
+    'rare': 260,
+    'epic': 165,
+    'mythic': 90,
+    'legendary': 50,
+    'special': 30,
+}
+
 # Фразы подтверждения для опасных админ-команд
 FULL_RESET_PHRASE = os.getenv('FULL_RESET_PHRASE', 'ПОЛНАЯ_ОТЧИСТКА')
 CLEAR_PVP_PHRASE = os.getenv('CLEAR_PVP_PHRASE', 'ОЧИСТИТЬ_ПВП')

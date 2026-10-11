@@ -22,6 +22,8 @@ from db.models import (
     PendingPayment,
     SeasonEntry,
     ProcessedPayment,
+    ShopPurchase,
+    ShopRotation,
     User,
     UserCharacter,
     compute_stats,
@@ -838,6 +840,42 @@ def delete_pending_payment(invoice_id: str) -> None:
         row = session.get(PendingPayment, invoice_id)
         if row is not None:
             session.delete(row)
+
+
+def get_shop_rotation(user_id: int, day: int) -> dict[int, int]:
+    with get_session() as session:
+        rows = session.execute(
+            select(ShopRotation.slot, ShopRotation.char_id).where(
+                ShopRotation.user_id == user_id, ShopRotation.day == day
+            )
+        ).all()
+        return {slot: char_id for slot, char_id in rows}
+
+
+def save_shop_rotation(user_id: int, day: int, picks: dict[int, int]) -> None:
+    if not picks:
+        return
+    with get_session() as session:
+        existing = set(
+            session.execute(
+                select(ShopRotation.slot).where(
+                    ShopRotation.user_id == user_id, ShopRotation.day == day
+                )
+            ).scalars().all()
+        )
+        for slot, char_id in picks.items():
+            if slot not in existing:
+                session.add(ShopRotation(user_id=user_id, day=day, slot=slot, char_id=char_id))
+
+
+def shop_purchased_char_ids(user_id: int, day: int) -> set[int]:
+    with get_session() as session:
+        rows = session.execute(
+            select(ShopPurchase.char_id).where(
+                ShopPurchase.user_id == user_id, ShopPurchase.day == day
+            )
+        ).scalars().all()
+        return set(rows)
 
 
 def finalize_payment(operation_id: str, user_id: int, amount: float, shards: int, label: str) -> str:

@@ -78,6 +78,9 @@ async def show_char_page(callback: CallbackQuery, callback_data: CharPageCB, bot
 async def handle_level_up(
     callback: CallbackQuery, callback_data: LevelUpCB, bot: Bot, user_id: int
 ) -> None:
+    if callback_data.rarity == "special":
+        await callback.answer("🛒 Спешлы качаются только в магазине", show_alert=True)
+        return
     async with user_lock(user_id):
         result = await run_db(upgrade, user_id, callback_data.char_id)
 
@@ -86,6 +89,9 @@ async def handle_level_up(
         return
     if result.status == "max":
         await callback.answer("Уже максимальный уровень", show_alert=True)
+        return
+    if result.status == "shop_only":
+        await callback.answer("🛒 Спешлы качаются только в магазине", show_alert=True)
         return
     if result.status != "ok":
         await callback.answer("Не удалось улучшить персонажа", show_alert=True)

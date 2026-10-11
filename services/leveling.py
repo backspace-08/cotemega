@@ -34,6 +34,8 @@ def upgrade(user_id: int, char_id: int) -> UpgradeResult:
         user = session.get(User, user_id)
         if character is None or user is None:
             return UpgradeResult(status="not_owned")
+        if character.rarity == "special":
+            return UpgradeResult(status="shop_only", level=instance.level)  # shop-only
 
         cost = level_cost(character.rarity, instance.level)
         shards = user.shards or 0

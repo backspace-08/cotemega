@@ -300,3 +300,37 @@ class BattleLog(Base):
     user1_name = Column(Text)
     user2_name = Column(Text)
     fought_at = Column(TIMESTAMP, default=func.now())
+
+
+class ShopPurchase(Base):
+    """A bought shop lot. Unique per (user, day, character) — blocks re-buying."""
+
+    __tablename__ = "shop_purchases"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    day = Column(Integer, nullable=False)  # date.toordinal() of the rotation day
+    char_id = Column(Integer, nullable=False)
+    level = Column(Integer)  # resulting level
+    cost = Column(Integer)
+    created_at = Column(TIMESTAMP, default=func.now())
+
+    __table_args__ = (UniqueConstraint("user_id", "day", "char_id", name="uq_shop_purchase"),)
+
+
+class ShopRotation(Base):
+    """The lot frozen for a given (user, day, slot).
+
+    Fixed on the day's first view so a card that becomes max-level later stays
+    shown (as max) instead of being swapped out.
+    """
+
+    __tablename__ = "shop_rotation"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), nullable=False)
+    day = Column(Integer, nullable=False)
+    slot = Column(SmallInteger, nullable=False)
+    char_id = Column(Integer, nullable=False)
+
+    __table_args__ = (UniqueConstraint("user_id", "day", "slot", name="uq_shop_rotation"),)

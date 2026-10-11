@@ -14,6 +14,7 @@ from core.callbacks import (
     MenuCB,
     NoopCB,
     RarityCB,
+    ShopCB,
     TopCB,
 )
 from core.texts import RARITY_EMOJI, RARITY_ORDER, level_cost
@@ -27,6 +28,7 @@ def main_menu_kb() -> InlineKeyboardMarkup:
     builder.button(text="👤 Профиль", callback_data=MenuCB(action="profile"))
     builder.button(text="🔄 Осколки", callback_data=MenuCB(action="exchange"))
     builder.button(text="💸 Донат", callback_data=MenuCB(action="donate"))
+    builder.button(text="🛒 Магазин", callback_data=MenuCB(action="shop"))
     builder.button(text="📰 Новости КП", url="https://t.me/DCOTEFILES")
     builder.button(text="⚔️ Арена", callback_data=MenuCB(action="arena"))
     builder.adjust(2)
@@ -101,9 +103,11 @@ def character_nav_kb(
         nav.append(InlineKeyboardButton(text="➡️", callback_data=CharPageCB(rarity=rarity, page=page + 1).pack()))
     builder.row(*nav)
 
-    # Row 2: upgrade to next level
+    # Row 2: upgrade to next level (specials level up only in the shop)
     if level >= MAX_CHARACTER_LEVEL:
         builder.row(InlineKeyboardButton(text=f"👑 Максимальный уровень ({MAX_CHARACTER_LEVEL})", callback_data=NoopCB().pack()))
+    elif rarity == "special":
+        builder.row(InlineKeyboardButton(text="🛒 Только в магазине", callback_data=NoopCB().pack()))
     else:
         cost = level_cost(rarity, level)
         builder.row(
@@ -303,4 +307,35 @@ def admin_char_kb(
             callback_data=AdminUsersCB(action="user", user_id=user_id, page=page).pack(),
         )
     )
+    return builder.as_markup()
+
+
+def shop_kb(day: int, index: int, total: int, char_id: int, state: str) -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    nav = []
+    if total > 1:
+        nav.append(InlineKeyboardButton(text="⬅️", callback_data=ShopCB(action="nav", day=day, index=index - 1).pack()))
+    nav.append(InlineKeyboardButton(text=f"{index + 1}/{total}", callback_data=NoopCB().pack()))
+    if total > 1:
+        nav.append(InlineKeyboardButton(text="➡️", callback_data=ShopCB(action="nav", day=day, index=index + 1).pack()))
+    builder.row(*nav)
+
+    if state == "buy":
+        builder.row(InlineKeyboardButton(
+            text="🛒 Купить",
+            callback_data=ShopCB(action="buy", day=day, index=index, char_id=char_id).pack(),
+        ))
+    elif state == "purchased":
+        builder.row(InlineKeyboardButton(text="✅ Куплено", callback_data=NoopCB().pack()))
+    else:  # maxed
+        builder.row(InlineKeyboardButton(
+            text=f"👑 Максимальный уровень ({MAX_CHARACTER_LEVEL})", callback_data=NoopCB().pack()
+        ))
+    builder.row(InlineKeyboardButton(text="↩️ В меню", callback_data=MenuCB(action="main").pack()))
+    return builder.as_markup()
+
+
+def shop_empty_kb() -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
     return builder.as_markup()

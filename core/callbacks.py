@@ -64,6 +64,13 @@ class AdminCharCB(CallbackData, prefix="achar"):
     value: str = ""
 
 
+class ShopCB(CallbackData, prefix="shop"):
+    action: str  # nav | buy
+    day: int = 0
+    index: int = 0
+    char_id: int = 0
+
+
 class NoopCB(CallbackData, prefix="noop"):
     pass
 
