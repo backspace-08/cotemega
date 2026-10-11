@@ -26,7 +26,7 @@ def _emoji(card: dict) -> str:
 
 
 def _name(card: dict) -> str:
-    return f"{card['name']} lvl {card.get('level', 1)}"
+    return f"{card['name']} Lv.{card.get('level', 1)}"
 
 
 def _relation_symbol(my_type: int, enemy_type: int) -> str:

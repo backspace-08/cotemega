@@ -112,7 +112,7 @@ def character_caption(card, *, title: str = "", points: int = 0, shards: int = 0
         parts.append(title)
     parts.append(f"{get_type_char(card.type)} {card.translation}")
     parts.append(f"Редкость - {loc_rarity(card.rarity)}")
-    parts.append(f"👑 Уровень - {card.level}/{MAX_CHARACTER_LEVEL}")
+    parts.append(f"👑 Lv.{card.level}/{MAX_CHARACTER_LEVEL}")
     parts.append(f"<blockquote>├‣❤️ - {card.health}\n├‣💪 - {card.attack}</blockquote>")
     if points:
         parts.append(f"💠 +{points} pts")
