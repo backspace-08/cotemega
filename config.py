@@ -154,14 +154,14 @@ SHOP_DISCOUNT = float(os.getenv('SHOP_DISCOUNT', '0.30'))       # скидка �
 SHOP_SPECIAL_COST = int(os.getenv('SHOP_SPECIAL_COST', '400'))  # спешл: фикс. цена за уровень
 SHOP_RESET_HOUR_UTC = int(os.getenv('SHOP_RESET_HOUR_UTC', '0'))  # час сброса ротации (UTC)
 # Глобальные веса редкостей для дневной ротации (одинаковы для всех).
-# Подобрано так, чтобы спешл появлялся ~12 раз за 90 дней.
+# Подобрано так, чтобы спешл появлялся ~9 раз за 90 дней.
 SHOP_RARITY_WEIGHTS = {
     'common': 400,
     'rare': 260,
     'epic': 165,
     'mythic': 90,
     'legendary': 50,
-    'special': 30,
+    'special': 22,
 }
 
 # Фразы подтверждения для опасных админ-команд

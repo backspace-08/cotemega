@@ -105,15 +105,28 @@ def decline_spins(count) -> str:
     return "круток"
 
 
-def character_caption(card, *, title: str = "", points: int = 0, shards: int = 0) -> str:
-    """Card caption for gacha/ownership screens (card is duck-typed)."""
+def character_caption(
+    card,
+    *,
+    title: str = "",
+    points: int = 0,
+    shards: int = 0,
+    next_health: int | None = None,
+    next_attack: int | None = None,
+) -> str:
+    """Card caption for gacha/ownership screens (card is duck-typed).
+
+    `next_health`/`next_attack` show "current → next" for the upgradeable screens.
+    """
     parts = []
     if title:
         parts.append(title)
     parts.append(f"{get_type_char(card.type)} {card.translation}")
     parts.append(f"Редкость - {loc_rarity(card.rarity)}")
     parts.append(f"👑 Lv.{card.level}/{MAX_CHARACTER_LEVEL}")
-    parts.append(f"<blockquote>├‣❤️ - {card.health}\n├‣💪 - {card.attack}</blockquote>")
+    hp = f"{card.health} → {next_health}" if next_health is not None else f"{card.health}"
+    atk = f"{card.attack} → {next_attack}" if next_attack is not None else f"{card.attack}"
+    parts.append(f"<blockquote>├‣❤️ - {hp}\n├‣💪 - {atk}</blockquote>")
     if points:
         parts.append(f"💠 +{points} pts")
     if shards:

@@ -12,6 +12,7 @@ from core.logger import logger
 from core.texts import RARITY_EMOJI, get_type_char, level_cost, loc_rarity
 from core.utils import edit_character_card, run_db, safe_delete_message, send_character_card
 from services import shop
+from services.leveling import next_level_stats
 from services.locks import user_lock
 
 router = Router()
@@ -34,7 +35,10 @@ def _lot_caption(lot: shop.Lot, note: str = "") -> str:
         lines.append(f"👑 Lv.{lot.level}")
     else:
         lines.append(f"👑 Lv.{lot.level} → Lv.{lot.level + 1}")
-    lines.append(f"<blockquote>├‣❤️ - {lot.card.health}\n├‣💪 - {lot.card.attack}</blockquote>")
+    nxt = next_level_stats(lot.card) if not (lot.maxed or lot.purchased) else None
+    hp = f"{lot.card.health} → {nxt['hp']}" if nxt else f"{lot.card.health}"
+    atk = f"{lot.card.attack} → {nxt['attack']}" if nxt else f"{lot.card.attack}"
+    lines.append(f"<blockquote>├‣❤️ - {hp}\n├‣💪 - {atk}</blockquote>")
     if not lot.maxed and not lot.purchased:
         price = f"💠 Цена: {lot.price}🔮"
         if lot.rarity != "special":

@@ -77,6 +77,8 @@ class CharacterCard:
     attack: int
     level: int = 1
     gender: str = "unknown"
+    base_hp: int = 0
+    base_attack: int = 0
 
 
 def _to_user_data(user: User) -> UserData:
@@ -247,6 +249,8 @@ def _card_from_row(row, level: int) -> CharacterCard:
         health=stats["hp"],
         attack=stats["attack"],
         level=level,
+        base_hp=int(row.base_hp or 0),
+        base_attack=int(row.base_attack or 0),
     )
 
 

@@ -4,8 +4,15 @@ from sqlalchemy import select
 
 from config import MAX_CHARACTER_LEVEL
 from core.texts import level_cost
-from db.models import Character, User, UserCharacter
+from db.models import Character, User, UserCharacter, compute_stats
 from db.session import get_session
+
+
+def next_level_stats(card) -> dict | None:
+    """HP/attack at the card's next level, or None if it's already max."""
+    if card.level >= MAX_CHARACTER_LEVEL:
+        return None
+    return compute_stats(card.base_hp, card.base_attack, card.rarity, card.level + 1)
 
 
 @dataclass

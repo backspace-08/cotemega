@@ -13,7 +13,7 @@ from db.queries import (
     get_user_character,
     get_user_rarity_counts,
 )
-from services.leveling import upgrade
+from services.leveling import next_level_stats, upgrade
 from services.locks import user_lock
 
 router = Router()
@@ -49,7 +49,12 @@ async def _render_rarity(
     page %= len(characters)
     card = characters[page]
     markup = _card_keyboard(rarity, page, len(characters), card.char_id, card.level)
-    caption = character_caption(card)
+    nxt = next_level_stats(card)
+    caption = character_caption(
+        card,
+        next_health=nxt["hp"] if nxt else None,
+        next_attack=nxt["attack"] if nxt else None,
+    )
 
     if edit:
         await edit_character_card(
@@ -106,11 +111,16 @@ async def handle_level_up(
     page = next((i for i, c in enumerate(characters) if c.char_id == card.char_id), 0)
     markup = _card_keyboard(callback_data.rarity, page, len(characters), card.char_id, card.level)
 
+    nxt = next_level_stats(card)
     try:
         await bot.edit_message_caption(
             chat_id=callback.message.chat.id,
             message_id=callback.message.message_id,
-            caption=character_caption(card),
+            caption=character_caption(
+                card,
+                next_health=nxt["hp"] if nxt else None,
+                next_attack=nxt["attack"] if nxt else None,
+            ),
             reply_markup=markup,
         )
     except TelegramBadRequest:
