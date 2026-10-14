@@ -88,9 +88,13 @@ def _find(data: dict, name_en: str) -> dict | None:
     return next((c for c in data["characters"] if c.get("name_en", "").lower() == low), None)
 
 
-def _find_by_ru(data: dict, name_ru: str) -> dict | None:
+def _find_all_by_ru(data: dict, name_ru: str) -> list[dict]:
     low = name_ru.strip().lower()
-    return next((c for c in data["characters"] if str(c.get("name_ru", "")).strip().lower() == low), None)
+    return [c for c in data["characters"] if str(c.get("name_ru", "")).strip().lower() == low]
+
+
+def _find_by_id(data: dict, char_id: int) -> dict | None:
+    return next((c for c in data["characters"] if c.get("id") == char_id), None)
 
 
 def _unique_filename(data: dict, slug: str, ext: str) -> str:
@@ -201,6 +205,18 @@ def _edit_kb():
         builder.button(text=label, callback_data=AdminCharCB(action="editfield", value=field))
     builder.button(text="❌ Закрыть", callback_data=AdminCharCB(action="cancel"))
     builder.adjust(2, 2, 2, 1)
+    return builder.as_markup()
+
+
+def _pick_kb(matches: list[dict]):
+    builder = InlineKeyboardBuilder()
+    for char in matches:
+        builder.button(
+            text=f"{RARITY_EMOJI.get(char.get('rarity', ''), '')} {char.get('name_en')} · id {char.get('id')}",
+            callback_data=AdminCharCB(action="editpick", value=str(char.get("id"))),
+        )
+    builder.button(text="❌ Отмена", callback_data=AdminCharCB(action="cancel"))
+    builder.adjust(1)
     return builder.as_markup()
 
 
@@ -370,12 +386,36 @@ async def edit_char_start(message: Message, state: FSMContext) -> None:
         return
     name = parts[1].strip()
     catalog = await run_db(r2.load_catalog)
-    entry = _find_by_ru(catalog, name)
-    if entry is None:
+    matches = _find_all_by_ru(catalog, name)
+    if not matches:
         await message.answer(f"❌ «{escape(name)}» не найден. Введи русское имя как в инвентаре.")
         return
+    if len(matches) > 1:
+        await message.answer(
+            f"Найдено {len(matches)} персонажей с именем «{escape(name)}». Выбери, кого редактировать:",
+            reply_markup=_pick_kb(matches),
+        )
+        return
+    entry = matches[0]
     await state.update_data(edit_name=entry["name_en"], edit_label=entry.get("name_ru", entry["name_en"]))
     await message.answer(_edit_text(entry), reply_markup=_edit_kb())
+
+
+@router.callback_query(AdminCharCB.filter(F.action == "editpick"), is_admin)
+async def edit_char_pick(callback: CallbackQuery, callback_data: AdminCharCB, state: FSMContext) -> None:
+    try:
+        char_id = int(callback_data.value)
+    except (TypeError, ValueError):
+        await callback.answer("Ошибка выбора", show_alert=True)
+        return
+    catalog = await run_db(r2.load_catalog)
+    entry = _find_by_id(catalog, char_id)
+    if entry is None:
+        await callback.answer("Персонаж не найден", show_alert=True)
+        return
+    await state.update_data(edit_name=entry["name_en"], edit_label=entry.get("name_ru", entry["name_en"]))
+    await callback.message.edit_text(_edit_text(entry), reply_markup=_edit_kb())
+    await callback.answer()
 
 
 @router.callback_query(AdminCharCB.filter(F.action == "editfield"), is_admin)
