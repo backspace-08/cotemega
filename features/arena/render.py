@@ -157,7 +157,7 @@ def switch_caption(card: dict, for_owner: bool) -> str:
     return f"{prefix}\n{card['name']}"
 
 
-def main_deck_block(slots: list[dict | None]) -> str:
+def main_deck_block(slots: list[dict | None], name: str = "Твоя колода") -> str:
     body = []
     marks = ["★", "✦", "✦"]
     for index, card in enumerate(slots):
@@ -167,7 +167,7 @@ def main_deck_block(slots: list[dict | None]) -> str:
         body.append(f"{marks[index]} {_emoji(card)} {_name(card)}")
         body.append(f"├‣❤️ - {card['hp']}")
         body.append(f"├‣💪 - {card['atk']}")
-    return "📁<b>Твоя колода:</b>\n<blockquote>" + "\n".join(body) + "</blockquote>"
+    return f"📁<b>{escape(name)}:</b>\n<blockquote>" + "\n".join(body) + "</blockquote>"
 
 
 def _deck_block(record: MatchRecord, user_id: int) -> str:

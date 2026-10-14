@@ -379,27 +379,115 @@ def roll_random_character(rarity: str) -> CharacterCard | None:
 # ARENA DECK / RATING
 # ──────────────────────────────────────────────
 
-def get_arena_deck_ids(user_id: int) -> list[int | None]:
-    """Return the 3 arena deck slots (char_id or None), ordered 1..3."""
-    deck: list[int | None] = [None, None, None]
+MAX_ARENA_DECKS = 3
+DEFAULT_DECK_NAME = "Колода"
+_DECK_SLOT_COLUMNS = {1: "char_1", 2: "char_2", 3: "char_3"}
+
+
+def _deck_dict(deck: ArenaDeck) -> dict:
+    return {
+        "deck_index": deck.deck_index,
+        "name": deck.name,
+        "is_main": bool(deck.is_main),
+        "char_ids": [deck.char_1, deck.char_2, deck.char_3],
+    }
+
+
+def get_decks(user_id: int) -> list[dict]:
     with get_session() as session:
         rows = session.execute(
-            select(ArenaDeck.slot, ArenaDeck.char_id).where(ArenaDeck.user_id == user_id)
-        ).all()
-    for slot, char_id in rows:
-        if 1 <= slot <= 3:
-            deck[slot - 1] = char_id
-    return deck
+            select(ArenaDeck).where(ArenaDeck.user_id == user_id).order_by(ArenaDeck.deck_index)
+        ).scalars().all()
+        return [_deck_dict(row) for row in rows]
 
 
-def set_arena_deck_slot(user_id: int, slot: int, char_id: int) -> None:
+def get_deck(user_id: int, deck_index: int) -> dict | None:
     with get_session() as session:
-        session.merge(ArenaDeck(user_id=user_id, slot=slot, char_id=char_id))
+        deck = session.get(ArenaDeck, (user_id, deck_index))
+        return _deck_dict(deck) if deck else None
 
 
-def clear_arena_deck(user_id: int) -> None:
+def ensure_default_deck(user_id: int) -> None:
     with get_session() as session:
-        session.execute(delete(ArenaDeck).where(ArenaDeck.user_id == user_id))
+        exists = session.execute(
+            select(ArenaDeck.deck_index).where(ArenaDeck.user_id == user_id).limit(1)
+        ).first()
+        if exists is None:
+            session.add(ArenaDeck(user_id=user_id, deck_index=0, name="Колода 1", is_main=True))
+
+
+def get_main_deck(user_id: int) -> dict | None:
+    decks = get_decks(user_id)
+    if not decks:
+        ensure_default_deck(user_id)
+        decks = get_decks(user_id)
+    return next((deck for deck in decks if deck["is_main"]), decks[0] if decks else None)
+
+
+def get_arena_deck_ids(user_id: int) -> list[int | None]:
+    """The MAIN deck's 3 slots (char_id or None), used by matchmaking/battle."""
+    deck = get_main_deck(user_id)
+    return list(deck["char_ids"]) if deck else [None, None, None]
+
+
+def ensure_decks(user_id: int) -> None:
+    """Make sure the user has all MAX_ARENA_DECKS decks (deck 0 is the main)."""
+    with get_session() as session:
+        existing = set(
+            session.execute(select(ArenaDeck.deck_index).where(ArenaDeck.user_id == user_id)).scalars().all()
+        )
+        for index in range(MAX_ARENA_DECKS):
+            if index in existing:
+                continue
+            session.add(
+                ArenaDeck(
+                    user_id=user_id,
+                    deck_index=index,
+                    name=f"Колода {index + 1}",
+                    is_main=(index == 0 and not existing),
+                )
+            )
+
+
+def rename_deck(user_id: int, deck_index: int, name: str) -> None:
+    name = (name or "").strip()[:32] or DEFAULT_DECK_NAME
+    with get_session() as session:
+        session.execute(
+            sql_update(ArenaDeck)
+            .where(ArenaDeck.user_id == user_id, ArenaDeck.deck_index == deck_index)
+            .values(name=name)
+        )
+
+
+def set_deck_main(user_id: int, deck_index: int) -> None:
+    with get_session() as session:
+        session.execute(sql_update(ArenaDeck).where(ArenaDeck.user_id == user_id).values(is_main=False))
+        session.execute(
+            sql_update(ArenaDeck)
+            .where(ArenaDeck.user_id == user_id, ArenaDeck.deck_index == deck_index)
+            .values(is_main=True)
+        )
+
+
+def set_deck_slot(user_id: int, deck_index: int, slot: int, char_id: int) -> None:
+    column = _DECK_SLOT_COLUMNS.get(slot)
+    if column is None:
+        return
+    with get_session() as session:
+        session.execute(
+            sql_update(ArenaDeck)
+            .where(ArenaDeck.user_id == user_id, ArenaDeck.deck_index == deck_index)
+            .values(**{column: char_id})
+        )
+
+
+def clear_deck(user_id: int, deck_index: int) -> None:
+    with get_session() as session:
+        session.execute(
+            sql_update(ArenaDeck)
+            .where(ArenaDeck.user_id == user_id, ArenaDeck.deck_index == deck_index)
+            .values(char_1=None, char_2=None, char_3=None)
+        )
 
 
 def get_rating(user_id: int) -> tuple[float, float, float, int]:

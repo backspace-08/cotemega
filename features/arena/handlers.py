@@ -32,6 +32,7 @@ from db.queries import (
     get_all_character_bases,
     get_arena_deck_ids,
     get_bot_stats,
+    get_main_deck,
     get_rating,
     get_user_character,
     get_user_data,
@@ -206,6 +207,11 @@ async def _deck_slots(user_id: int) -> list:
     return slots
 
 
+async def _deck_name(user_id: int) -> str:
+    deck = await run_db(get_main_deck, user_id)
+    return deck["name"] if deck else "Твоя колода"
+
+
 async def _player_rating_line(user_id: int) -> str:
     rating, _rd, _vol, matches = await run_db(get_rating, user_id)
     if matches < ARENA_CALIBRATION_MATCHES:
@@ -220,10 +226,11 @@ async def _player_rating_line(user_id: int) -> str:
 async def show_arena_menu(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
     slots = await _deck_slots(user_id)
     rating_line = await _player_rating_line(user_id)
+    deck_name = await _deck_name(user_id)
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(
         callback.message.chat.id,
-        f"{main_deck_block(slots)}\n\n{rating_line}",
+        f"{main_deck_block(slots, deck_name)}\n\n{rating_line}",
         reply_markup=arena_menu_kb(show_pve=cfr_player.CFR_AVAILABLE),
     )
     await callback.answer()
@@ -236,10 +243,11 @@ async def show_bot_menu(callback: CallbackQuery, bot: Bot, user_id: int) -> None
     bot_line = await run_db(bot_winrate_line, bot_stats)
     data = await run_db(get_user_data, user_id)
     human_line = human_pve_line(data.pve_wins, data.pve_losses) if data else ""
+    deck_name = await _deck_name(user_id)
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(
         callback.message.chat.id,
-        f"{main_deck_block(slots)}\n\n{bot_line}\n\n{human_line}",
+        f"{main_deck_block(slots, deck_name)}\n\n{bot_line}\n\n{human_line}",
         reply_markup=bot_menu_kb(),
     )
     await callback.answer()

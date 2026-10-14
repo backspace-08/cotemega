@@ -82,19 +82,22 @@ class ArenaCB(CallbackData, prefix="ar"):
 
 
 class DeckCB(CallbackData, prefix="adk"):
-    action: str  # slot | clear | back
+    action: str  # slot | clear | rename | nav | star | back
     slot: int = 0
+    deck: int = 0
 
 
 class DeckRarityCB(CallbackData, prefix="adr"):
     rarity: str
     slot: int
+    deck: int = 0
 
 
 class DeckPageCB(CallbackData, prefix="adp"):
     rarity: str
     slot: int
     page: int
+    deck: int = 0
 
 
 class DeckPickCB(CallbackData, prefix="adx"):
@@ -102,6 +105,7 @@ class DeckPickCB(CallbackData, prefix="adx"):
     rarity: str
     slot: int
     page: int
+    deck: int = 0
 
 
 class BattleCB(CallbackData, prefix="ab"):

@@ -46,6 +46,23 @@ _MIGRATE_INVENTORY_SQL = text(
 )
 
 
+# Arena decks used to live in `arena_deck(user_id, slot, char_id)`. Copy the old
+# single deck into the new `arena_decks` table as deck_index 0 (main).
+_MIGRATE_ARENA_DECK_SQL = text(
+    """
+    INSERT INTO arena_decks (user_id, deck_index, name, char_1, char_2, char_3, is_main)
+    SELECT user_id, 0, 'Колода 1',
+           max(char_id) FILTER (WHERE slot = 1),
+           max(char_id) FILTER (WHERE slot = 2),
+           max(char_id) FILTER (WHERE slot = 3),
+           TRUE
+    FROM arena_deck
+    GROUP BY user_id
+    ON CONFLICT (user_id, deck_index) DO NOTHING
+    """
+)
+
+
 # create_all() does not alter existing tables, so new columns must be added
 # explicitly. Keep this list append-only.
 _ADD_COLUMNS_SQL = [
@@ -82,3 +99,11 @@ def init_db() -> None:
                 logger.info(f"Migrated {result.rowcount} characters from inventory")
     except Exception as e:  # noqa: BLE001
         logger.warning(f"Inventory migration skipped: {e}")
+
+    try:
+        with engine.begin() as conn:
+            result = conn.execute(_MIGRATE_ARENA_DECK_SQL)
+            if result.rowcount:
+                logger.info(f"Migrated {result.rowcount} arena decks")
+    except Exception as e:  # noqa: BLE001
+        logger.warning(f"Arena deck migration skipped: {e}")

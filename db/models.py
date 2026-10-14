@@ -188,13 +188,21 @@ class Inventory(Base):
 
 
 class ArenaDeck(Base):
-    """Arena deck: up to 3 characters per user (slot 1..3)."""
+    """One of up to 3 arena decks per user; `is_main` marks the active deck."""
 
-    __tablename__ = "arena_deck"
+    __tablename__ = "arena_decks"
 
     user_id = Column(BigInteger, ForeignKey("users.user_id", ondelete="CASCADE"), primary_key=True)
-    slot = Column(SmallInteger, primary_key=True)
-    char_id = Column(Integer, ForeignKey("characters.char_id", ondelete="CASCADE"), nullable=False)
+    deck_index = Column(SmallInteger, primary_key=True)  # 0..2
+    name = Column(Text, nullable=False, default="Колода")
+    char_1 = Column(Integer, ForeignKey("characters.char_id", ondelete="SET NULL"))
+    char_2 = Column(Integer, ForeignKey("characters.char_id", ondelete="SET NULL"))
+    char_3 = Column(Integer, ForeignKey("characters.char_id", ondelete="SET NULL"))
+    is_main = Column(Boolean, default=False)
+
+    @property
+    def char_ids(self) -> list:
+        return [self.char_1, self.char_2, self.char_3]
 
 
 class ArenaBot(Base):

@@ -25,7 +25,7 @@ def arena_menu_kb(show_pve: bool = True) -> InlineKeyboardMarkup:
         builder.row(InlineKeyboardButton(text="🤖 Бой с ботом", callback_data=ArenaCB(action="bot").pack()))
     builder.row(
         InlineKeyboardButton(text="🔱 Лиги", callback_data=ArenaCB(action="leagues").pack()),
-        InlineKeyboardButton(text="🎴 Колода\u00A0", callback_data=ArenaCB(action="deck").pack()),
+        InlineKeyboardButton(text="🎴 Колоды\u00A0", callback_data=ArenaCB(action="decks").pack()),
     )
     builder.row(InlineKeyboardButton(text="🧩 Об арене", callback_data=ArenaCB(action="about").pack()))
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data=MenuCB(action="main").pack()))
@@ -45,20 +45,51 @@ def back_to_arena_kb() -> InlineKeyboardMarkup:
     return builder.as_markup()
 
 
-def deck_kb(slots: list[int | None]) -> InlineKeyboardMarkup:
+def deck_kb(slots: list[int | None], deck: int, is_main: bool, total: int) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    marks = ["1", "2", "3"]
+
     row = []
     for index, char_id in enumerate(slots):
         text = "✅ 🎴" if char_id else "❌ 🎴"
-        row.append(InlineKeyboardButton(text=text, callback_data=DeckCB(action="slot", slot=index + 1).pack()))
+        row.append(
+            InlineKeyboardButton(
+                text=text, callback_data=DeckCB(action="slot", slot=index + 1, deck=deck).pack()
+            )
+        )
     builder.row(*row)
-    builder.row(InlineKeyboardButton(text="🗑️ Очистить", callback_data=DeckCB(action="clear").pack()))
+
+    builder.row(
+        InlineKeyboardButton(text="✏️ Название", callback_data=DeckCB(action="rename", deck=deck).pack()),
+        InlineKeyboardButton(text="🗑️ Очистить", callback_data=DeckCB(action="clear", deck=deck).pack()),
+    )
+
+    nav = []
+    if total > 1:
+        nav.append(
+            InlineKeyboardButton(
+                text="⬅️", callback_data=DeckCB(action="nav", deck=(deck - 1) % total).pack()
+            )
+        )
+    nav.append(
+        InlineKeyboardButton(
+            text="⭐" if is_main else "☆", callback_data=DeckCB(action="star", deck=deck).pack()
+        )
+    )
+    if total > 1:
+        nav.append(
+            InlineKeyboardButton(
+                text="➡️", callback_data=DeckCB(action="nav", deck=(deck + 1) % total).pack()
+            )
+        )
+    builder.row(*nav)
+
     builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data=ArenaCB(action="menu").pack()))
     return builder.as_markup()
 
 
-def deck_rarity_kb(slot: int, user_counts: dict, total_counts: dict, has_special: bool) -> InlineKeyboardMarkup:
+def deck_rarity_kb(
+    slot: int, user_counts: dict, total_counts: dict, has_special: bool, deck: int
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     labels = {
         "common": "Обычные",
@@ -71,36 +102,36 @@ def deck_rarity_kb(slot: int, user_counts: dict, total_counts: dict, has_special
         builder.row(
             InlineKeyboardButton(
                 text=f"{RARITY_EMOJI[rarity]} {label} {user_counts.get(rarity, 0)}/{total_counts.get(rarity, 0)}",
-                callback_data=DeckRarityCB(rarity=rarity, slot=slot).pack(),
+                callback_data=DeckRarityCB(rarity=rarity, slot=slot, deck=deck).pack(),
             )
         )
     if has_special:
         builder.row(
             InlineKeyboardButton(
                 text=f"{RARITY_EMOJI['special']} Специальные {user_counts.get('special', 0)}",
-                callback_data=DeckRarityCB(rarity="special", slot=slot).pack(),
+                callback_data=DeckRarityCB(rarity="special", slot=slot, deck=deck).pack(),
             )
         )
-    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data=DeckCB(action="back").pack()))
+    builder.row(InlineKeyboardButton(text="⬅️ Назад", callback_data=DeckCB(action="back", deck=deck).pack()))
     return builder.as_markup()
 
 
 def deck_pick_kb(
-    *, char_id: int, rarity: str, slot: int, page: int, total_pages: int, chosen: bool
+    *, char_id: int, rarity: str, slot: int, page: int, total_pages: int, chosen: bool, deck: int
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     nav = []
     if total_pages > 1:
         nav.append(
             InlineKeyboardButton(
-                text="⬅️", callback_data=DeckPageCB(rarity=rarity, slot=slot, page=page - 1).pack()
+                text="⬅️", callback_data=DeckPageCB(rarity=rarity, slot=slot, page=page - 1, deck=deck).pack()
             )
         )
     nav.append(InlineKeyboardButton(text=f"{page + 1}/{total_pages}", callback_data=NoopCB().pack()))
     if total_pages > 1:
         nav.append(
             InlineKeyboardButton(
-                text="➡️", callback_data=DeckPageCB(rarity=rarity, slot=slot, page=page + 1).pack()
+                text="➡️", callback_data=DeckPageCB(rarity=rarity, slot=slot, page=page + 1, deck=deck).pack()
             )
         )
     builder.row(*nav)
@@ -110,10 +141,14 @@ def deck_pick_kb(
         builder.row(
             InlineKeyboardButton(
                 text="✅ Выбрать\u00A0",
-                callback_data=DeckPickCB(char_id=char_id, rarity=rarity, slot=slot, page=page).pack(),
+                callback_data=DeckPickCB(char_id=char_id, rarity=rarity, slot=slot, page=page, deck=deck).pack(),
             )
         )
-    builder.row(InlineKeyboardButton(text="↩ В меню редкостей", callback_data=DeckCB(action="slot", slot=slot).pack()))
+    builder.row(
+        InlineKeyboardButton(
+            text="↩ В меню редкостей", callback_data=DeckCB(action="slot", slot=slot, deck=deck).pack()
+        )
+    )
     return builder.as_markup()
 
 
