@@ -147,7 +147,6 @@ EN = {
     "\n🔄 Обновится через {time}": "\n🔄 Refreshes in {time}",
     "{hours}ч {minutes}м": "{hours}h {minutes}m",
     "🛒 Магазин пуст — нет карт для прокачки.": "🛒 The shop is empty — no cards to upgrade.",
-    "🔒 Магазин откроется с {count} карточек": "🔒 The shop unlocks at {count} cards",
     "🔒 Магазин откроется с {count} карточек — осталось ещё {left}":
         "🔒 The shop unlocks at {count} cards — {left} to go",
     "🔄 Магазин обновился": "🔄 Shop refreshed",

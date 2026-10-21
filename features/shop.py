@@ -12,6 +12,7 @@ from core.keyboards import shop_empty_kb, shop_kb
 from core.logger import logger
 from core.texts import RARITY_EMOJI, card_name, get_type_char, level_cost, loc_rarity
 from core.utils import edit_character_card, run_db, safe_delete_message, send_character_card
+from db.queries import count_user_characters
 from services import shop
 from services.leveling import next_level_stats
 from services.locks import user_lock
@@ -94,10 +95,16 @@ async def _render(
 
 @router.callback_query(MenuCB.filter(F.action == "shop"))
 async def show_shop(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
-    eligible = await run_db(shop.is_eligible, user_id)
-    if not eligible:
+    owned = await run_db(count_user_characters, user_id)
+    if owned < SHOP_MIN_CARDS:
         await callback.answer(
-            t(lang, "🔒 Магазин откроется с {count} карточек", count=SHOP_MIN_CARDS), show_alert=True
+            t(
+                lang,
+                "🔒 Магазин откроется с {count} карточек — осталось ещё {left}",
+                count=SHOP_MIN_CARDS,
+                left=SHOP_MIN_CARDS - owned,
+            ),
+            show_alert=True,
         )
         return
     await _render(bot, callback, user_id, lang, index=0)

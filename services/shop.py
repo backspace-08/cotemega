@@ -23,7 +23,6 @@ from config import (
 from core.texts import level_cost
 from db.models import ShopPurchase, User, UserCharacter
 from db.queries import (
-    count_user_characters,
     get_owned_characters,
     get_shop_rotation,
     get_user_character,
@@ -83,12 +82,6 @@ class BuyResult:
     cost: int = 0
     new_level: int = 0
     shards: int = 0
-
-
-def is_eligible(user_id: int) -> bool:
-    from config import SHOP_MIN_CARDS
-
-    return count_user_characters(user_id) >= SHOP_MIN_CARDS
 
 
 def _pick(by_rarity: dict, wanted: str, user_id: int, day: int, slot: int, exclude=frozenset()):
