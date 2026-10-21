@@ -22,11 +22,10 @@ from config import (
     START_SPINS,
     card_image,
 )
-from core.callbacks import AdminShardsCB, AdminUsersCB
+from core.callbacks import AdminUsersCB
 from core.keyboards import (
     admin_char_kb,
     admin_char_rarity_kb,
-    admin_shards_kb,
     admin_user_currency_kb,
     admin_user_kb,
     admin_users_list_kb,
@@ -54,7 +53,6 @@ from db.queries import (
     get_user_id_by_username,
     get_user_rarity_counts,
     get_users_page,
-    get_username,
     grant_character,
     grant_character_or_level,
     reset_all_progress,
@@ -69,9 +67,6 @@ router = Router()
 
 class AdminForm(StatesGroup):
     get_id_username = State()
-    shards_user_id = State()
-    shards_manual_amount = State()
-    shards_description = State()
     give_char_id = State()
     all_currency_amount = State()
     broadcast_text = State()
@@ -100,10 +95,6 @@ async def _quit_if_requested(message: Message, state: FSMContext) -> bool:
         await state.clear()
         return True
     return False
-
-
-async def _username_or_id(user_id: int) -> str:
-    return await run_db(get_username, user_id) or str(user_id)
 
 
 # ──────────────────────────────────────────────
@@ -392,111 +383,18 @@ async def get_id_process(message: Message, state: FSMContext) -> None:
 
 
 # ──────────────────────────────────────────────
-# /give_shards
+# /user <id> — open a player card (same view as the /users browser)
 # ──────────────────────────────────────────────
 
-@router.message(Command("give_shards"), is_admin)
-async def give_shards_start(message: Message, state: FSMContext) -> None:
-    await state.set_state(AdminForm.shards_user_id)
-    await message.answer(_with_quit("Введите ID пользователя:"))
-
-
-@router.message(StateFilter(AdminForm.shards_user_id), is_admin)
-async def give_shards_user(message: Message, state: FSMContext) -> None:
-    if await _quit_if_requested(message, state):
+@router.message(Command("user"), is_admin)
+async def user_card(message: Message) -> None:
+    parts = (message.text or "").split(maxsplit=1)
+    raw = parts[1].strip() if len(parts) > 1 else ""
+    if not raw.isdigit():
+        await message.answer("Использование: <code>/user &lt;id&gt;</code>")
         return
-    try:
-        user_id = int((message.text or "").strip())
-    except ValueError:
-        await message.answer(_with_quit("❌ ID должен быть числом."))
-        return
-    username = await _username_or_id(user_id)
-    await state.update_data(user_id=user_id)
-    await state.set_state(None)
-    await message.answer(
-        _with_quit(f"Выберите количество осколков для @{username} (id <code>{user_id}</code>):"),
-        reply_markup=admin_shards_kb(user_id),
-    )
-
-
-@router.callback_query(AdminShardsCB.filter(), is_admin)
-async def give_shards_amount(
-    callback: CallbackQuery, callback_data: AdminShardsCB, state: FSMContext, bot: Bot
-) -> None:
-    user_id = callback_data.user_id
-    username = await _username_or_id(user_id)
-    await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
-
-    if callback_data.amount == "hand":
-        await state.update_data(user_id=user_id)
-        await state.set_state(AdminForm.shards_manual_amount)
-        await bot.send_message(
-            ADMIN_ID,
-            _with_quit(f"Введите количество осколков для @{username} (id <code>{user_id}</code>)"),
-        )
-        await callback.answer()
-        return
-
-    await state.update_data(user_id=user_id, shards=callback_data.amount)
-    await state.set_state(AdminForm.shards_description)
-    await bot.send_message(
-        ADMIN_ID,
-        _with_quit(
-            f"Введите описание для @{username} (id <code>{user_id}</code>). "
-            f"Если описания нет, введите «нет».\n"
-            f"Базовое описание: На ваш аккаунт поступило {callback_data.amount} 🔮"
-        ),
-    )
-    await callback.answer()
-
-
-@router.message(StateFilter(AdminForm.shards_manual_amount), is_admin)
-async def give_shards_manual(message: Message, state: FSMContext) -> None:
-    if await _quit_if_requested(message, state):
-        return
-    text = (message.text or "").strip()
-    if not text.isdigit():
-        await message.answer(_with_quit("❌ Введите целое число."))
-        return
-    data = await state.get_data()
-    user_id = data["user_id"]
-    username = await _username_or_id(user_id)
-    await state.update_data(shards=text)
-    await state.set_state(AdminForm.shards_description)
-    await message.answer(
-        _with_quit(
-            f"Введите описание для @{username} (id <code>{user_id}</code>). "
-            f"Если описания нет, введите «нет».\n"
-            f"Базовое описание: На ваш аккаунт поступило {text} 🔮"
-        )
-    )
-
-
-@router.message(StateFilter(AdminForm.shards_description), is_admin)
-async def give_shards_finish(message: Message, state: FSMContext, bot: Bot) -> None:
-    if await _quit_if_requested(message, state):
-        return
-    data = await state.get_data()
-    user_id = int(data["user_id"])
-    shards = int(data["shards"])
-    description = (message.text or "").strip()
-    if description.lower() in ("нет", "none"):
-        description = ""
-
-    await run_db(update_currency, user_id, "shards", shards)
-    await state.clear()
-
-    try:
-        text = f"На ваш аккаунт поступило {shards} 🔮 {description}".strip()
-        await bot.send_message(user_id, text)
-    except Exception as e:  # noqa: BLE001
-        logger.error(f"Не удалось уведомить {user_id}: {e}")
-
-    username = await _username_or_id(user_id)
-    await message.answer(
-        f"На аккаунт @{username} (ID <code>{user_id}</code>) поступило {shards} 🔮 "
-        f"с описанием {description}"
-    )
+    text, kb = await _user_view(int(raw), 0)
+    await message.answer(text, reply_markup=kb)
 
 
 # ──────────────────────────────────────────────
@@ -543,7 +441,7 @@ ADMIN_COMMANDS_TEXT = (
     "/add_char — добавить персонажа (арт + статы) прямо через бота\n"
     "/edit_char &lt;имя&gt; — изменить арт/имя/статы/тип/пол персонажа (по русскому имени)\n"
     "/users — браузер игроков: карточки, выдача валюты и персонажей\n"
-    "/give_shards — выдать осколки одному игроку (кнопки или вручную + описание)\n"
+    "/user &lt;id&gt; — окно конкретного игрока (то же, что в браузере)\n"
     "/give_char — выдать себе персонажа по ID из БД\n"
     "/give_all — выдать валюту ВСЕМ (например «500» = осколки, «500 spins», «500 super_spins»)\n"
     "/broadcast — отправить сообщение всем игрокам\n"

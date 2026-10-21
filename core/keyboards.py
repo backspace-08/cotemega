@@ -198,17 +198,6 @@ def donate_prices_kb(
     return builder.as_markup()
 
 
-def admin_shards_kb(user_id: int) -> InlineKeyboardMarkup:
-    from core.callbacks import AdminShardsCB
-
-    builder = InlineKeyboardBuilder()
-    for amount in ("80", "300", "600", "1300"):
-        builder.button(text=f"{amount}🔮", callback_data=AdminShardsCB(amount=amount, user_id=user_id))
-    builder.button(text="Ввести вручную", callback_data=AdminShardsCB(amount="hand", user_id=user_id))
-    builder.adjust(2, 2, 1)
-    return builder.as_markup()
-
-
 RARITY_LABELS = {
     "common": "Обычные",
     "rare": "Редкие",

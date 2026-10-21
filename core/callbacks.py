@@ -44,11 +44,6 @@ class BuyCB(CallbackData, prefix="buy"):
     shards: int
 
 
-class AdminShardsCB(CallbackData, prefix="adm_shards"):
-    amount: str  # number or "hand"
-    user_id: int
-
-
 class AdminUsersCB(CallbackData, prefix="ausr"):
     action: str  # list | user | currency | curpick | char | charnav | charpick
     user_id: int = 0
