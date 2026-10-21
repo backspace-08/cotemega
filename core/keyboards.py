@@ -219,12 +219,15 @@ RARITY_LABELS = {
 }
 
 
-def admin_users_list_kb(users: list[dict], page: int, total_pages: int) -> InlineKeyboardMarkup:
+def admin_users_list_kb(
+    users: list[dict], page: int, total_pages: int, start: int = 1
+) -> InlineKeyboardMarkup:
+    """User browser list: numbered by place, with points (same order as the top)."""
     builder = InlineKeyboardBuilder()
-    for user in users:
+    for offset, user in enumerate(users):
         name = user["first_name"] or (f"@{user['username']}" if user["username"] else str(user["user_id"]))
         builder.button(
-            text=name[:60],
+            text=f"{start + offset}. {name[:40]} — {user.get('points') or 0} 💠",
             callback_data=AdminUsersCB(action="user", user_id=user["user_id"], page=page),
         )
     builder.adjust(1)

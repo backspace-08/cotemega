@@ -84,6 +84,14 @@ def is_admin(event: Message | CallbackQuery) -> bool:
     return event.from_user is not None and event.from_user.id == ADMIN_ID
 
 
+QUIT_HINT = "/quit — отмена."
+
+
+def _with_quit(text: str) -> str:
+    """Standard ending for every admin prompt that accepts /quit."""
+    return f"{text}\n\n{QUIT_HINT}"
+
+
 async def _quit_if_requested(message: Message, state: FSMContext) -> bool:
     # Accept both "quit" and "/quit" (the prompts tell the admin to type /quit).
     text = (message.text or "").strip().lower().lstrip("/")
@@ -119,19 +127,23 @@ def _display_name(data, user_id: int) -> str:
 async def _users_page_view(page: int):
     data = await run_db(get_users_page, page, USERS_PER_PAGE)
     text = (
-        "👥 <b>Пользователи</b>\n"
+        "👥 <b>Пользователи</b> · по очкам 💠\n"
         f"Страница {data['page'] + 1}/{data['total_pages']} · всего {data['total']}"
     )
-    return text, admin_users_list_kb(data["items"], data["page"], data["total_pages"])
+    start = data["page"] * USERS_PER_PAGE + 1
+    return text, admin_users_list_kb(data["items"], data["page"], data["total_pages"], start)
 
 
 async def _user_view(user_id: int, page: int, note: str = ""):
     data = await run_db(get_user_data, user_id)
     if data is None:
         page_data = await run_db(get_users_page, page, USERS_PER_PAGE)
+        start = page_data["page"] * USERS_PER_PAGE + 1
         return (
             "❌ Пользователь не найден",
-            admin_users_list_kb(page_data["items"], page_data["page"], page_data["total_pages"]),
+            admin_users_list_kb(
+                page_data["items"], page_data["page"], page_data["total_pages"], start
+            ),
         )
     username = f"@{data.username}" if data.username else "—"
     created = data.created_at.strftime("%d.%m.%Y") if data.created_at else "—"
@@ -228,8 +240,10 @@ async def users_curpick(
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(
         ADMIN_ID,
-        f"Введите количество {_CURRENCY_LABEL[callback_data.field]} для "
-        f"{_display_name(data, callback_data.user_id)} (id {callback_data.user_id}) или /quit",
+        _with_quit(
+            f"Введите количество {_CURRENCY_LABEL[callback_data.field]} для "
+            f"{_display_name(data, callback_data.user_id)} (id <code>{callback_data.user_id}</code>)"
+        ),
     )
     await callback.answer()
 
@@ -240,11 +254,11 @@ async def users_amount(message: Message, state: FSMContext) -> None:
         return
     text = (message.text or "").strip()
     if not text.lstrip("-").isdigit():
-        await message.answer("❌ Введите целое число или /quit")
+        await message.answer(_with_quit("❌ Введите целое число."))
         return
     await state.update_data(amount=int(text))
     await state.set_state(AdminForm.users_message)
-    await message.answer("Введите сообщение игроку (или «нет», чтобы без него). /quit — отмена.")
+    await message.answer(_with_quit("Введите сообщение игроку (или «нет», чтобы без него)."))
 
 
 @router.message(StateFilter(AdminForm.users_message), is_admin)
@@ -362,7 +376,7 @@ async def users_char_pick(callback: CallbackQuery, callback_data: AdminUsersCB, 
 @router.message(Command("get_id"), is_admin)
 async def get_id_start(message: Message, state: FSMContext) -> None:
     await state.set_state(AdminForm.get_id_username)
-    await message.answer("Введите @ пользователя:")
+    await message.answer(_with_quit("Введите @ пользователя:"))
 
 
 @router.message(StateFilter(AdminForm.get_id_username), is_admin)
@@ -372,7 +386,9 @@ async def get_id_process(message: Message, state: FSMContext) -> None:
     username = (message.text or "").strip().lstrip("@")
     user_id = await run_db(get_user_id_by_username, username)
     await state.clear()
-    await message.answer(f"{user_id}" if user_id else "❌ Пользователь не найден")
+    await message.answer(
+        f"🆔 <code>{user_id}</code>" if user_id else "❌ Пользователь не найден"
+    )
 
 
 # ──────────────────────────────────────────────
@@ -382,7 +398,7 @@ async def get_id_process(message: Message, state: FSMContext) -> None:
 @router.message(Command("give_shards"), is_admin)
 async def give_shards_start(message: Message, state: FSMContext) -> None:
     await state.set_state(AdminForm.shards_user_id)
-    await message.answer("Введите ID пользователя:")
+    await message.answer(_with_quit("Введите ID пользователя:"))
 
 
 @router.message(StateFilter(AdminForm.shards_user_id), is_admin)
@@ -392,13 +408,13 @@ async def give_shards_user(message: Message, state: FSMContext) -> None:
     try:
         user_id = int((message.text or "").strip())
     except ValueError:
-        await message.answer("❌ ID должен быть числом")
+        await message.answer(_with_quit("❌ ID должен быть числом."))
         return
     username = await _username_or_id(user_id)
     await state.update_data(user_id=user_id)
     await state.set_state(None)
     await message.answer(
-        f"Выберите количество осколков для @{username} (id {user_id}):",
+        _with_quit(f"Выберите количество осколков для @{username} (id <code>{user_id}</code>):"),
         reply_markup=admin_shards_kb(user_id),
     )
 
@@ -414,7 +430,10 @@ async def give_shards_amount(
     if callback_data.amount == "hand":
         await state.update_data(user_id=user_id)
         await state.set_state(AdminForm.shards_manual_amount)
-        await bot.send_message(ADMIN_ID, f"Введите количество осколков для @{username} (id {user_id})")
+        await bot.send_message(
+            ADMIN_ID,
+            _with_quit(f"Введите количество осколков для @{username} (id <code>{user_id}</code>)"),
+        )
         await callback.answer()
         return
 
@@ -422,8 +441,11 @@ async def give_shards_amount(
     await state.set_state(AdminForm.shards_description)
     await bot.send_message(
         ADMIN_ID,
-        f"Введите описание для @{username} (id {user_id}). Если описания нет, введите «нет».\n"
-        f"Базовое описание: На ваш аккаунт поступило {callback_data.amount} 🔮",
+        _with_quit(
+            f"Введите описание для @{username} (id <code>{user_id}</code>). "
+            f"Если описания нет, введите «нет».\n"
+            f"Базовое описание: На ваш аккаунт поступило {callback_data.amount} 🔮"
+        ),
     )
     await callback.answer()
 
@@ -434,7 +456,7 @@ async def give_shards_manual(message: Message, state: FSMContext) -> None:
         return
     text = (message.text or "").strip()
     if not text.isdigit():
-        await message.answer("❌ Введите целое число")
+        await message.answer(_with_quit("❌ Введите целое число."))
         return
     data = await state.get_data()
     user_id = data["user_id"]
@@ -442,8 +464,11 @@ async def give_shards_manual(message: Message, state: FSMContext) -> None:
     await state.update_data(shards=text)
     await state.set_state(AdminForm.shards_description)
     await message.answer(
-        f"Введите описание для @{username} (id {user_id}). Если описания нет, введите «нет».\n"
-        f"Базовое описание: На ваш аккаунт поступило {text} 🔮"
+        _with_quit(
+            f"Введите описание для @{username} (id <code>{user_id}</code>). "
+            f"Если описания нет, введите «нет».\n"
+            f"Базовое описание: На ваш аккаунт поступило {text} 🔮"
+        )
     )
 
 
@@ -469,7 +494,8 @@ async def give_shards_finish(message: Message, state: FSMContext, bot: Bot) -> N
 
     username = await _username_or_id(user_id)
     await message.answer(
-        f"На аккаунт @{username} (ID {user_id}) поступило {shards} 🔮 с описанием {description}"
+        f"На аккаунт @{username} (ID <code>{user_id}</code>) поступило {shards} 🔮 "
+        f"с описанием {description}"
     )
 
 
@@ -480,7 +506,7 @@ async def give_shards_finish(message: Message, state: FSMContext, bot: Bot) -> N
 @router.message(Command("give_char"), is_admin)
 async def give_char_start(message: Message, state: FSMContext) -> None:
     await state.set_state(AdminForm.give_char_id)
-    await message.answer("Введите ID персонажа из БД:")
+    await message.answer(_with_quit("Введите ID персонажа из БД:"))
 
 
 @router.message(StateFilter(AdminForm.give_char_id), is_admin)
@@ -490,12 +516,12 @@ async def give_char_process(message: Message, state: FSMContext, bot: Bot) -> No
     try:
         char_id = int((message.text or "").strip())
     except ValueError:
-        await message.answer("❌ ID должен быть числом")
+        await message.answer(_with_quit("❌ ID должен быть числом."))
         return
 
     card = await run_db(get_character_by_id, char_id)
     if card is None:
-        await message.answer("❌ Персонаж с таким ID не найден")
+        await message.answer(_with_quit("❌ Персонаж с таким ID не найден."))
         return
 
     await state.clear()
@@ -612,10 +638,12 @@ async def admin_commands(message: Message) -> None:
 async def give_all_start(message: Message, state: FSMContext) -> None:
     await state.set_state(AdminForm.all_currency_amount)
     await message.answer(
-        "Введите сумму и валюту:\n"
-        "«500» — осколки (по умолчанию)\n"
-        "«500 spins» — крутки\n"
-        "«500 super_spins» — супер-крутки"
+        _with_quit(
+            "Введите сумму и валюту:\n"
+            "«500» — осколки (по умолчанию)\n"
+            "«500 spins» — крутки\n"
+            "«500 super_spins» — супер-крутки"
+        )
     )
 
 
@@ -626,12 +654,12 @@ async def give_all_amount(message: Message, state: FSMContext, bot: Bot) -> None
     parts = (message.text or "").split()
     currency = parts[1] if len(parts) > 1 else "shards"
     if currency not in ("shards", "spins", "super_spins"):
-        await message.answer("❌ Валюта: shards / spins / super_spins")
+        await message.answer(_with_quit("❌ Валюта: shards / spins / super_spins"))
         return
     try:
         amount = int(parts[0])
     except (ValueError, IndexError):
-        await message.answer("❌ Введите целое число, например «500 spins»")
+        await message.answer(_with_quit("❌ Введите целое число, например «500 spins»"))
         return
 
     await state.clear()
@@ -657,8 +685,7 @@ async def give_all_amount(message: Message, state: FSMContext, bot: Bot) -> None
 async def broadcast_start(message: Message, state: FSMContext) -> None:
     await state.set_state(AdminForm.broadcast_text)
     await message.answer(
-        "Отправьте сообщение рассылки — текст и/или прикреплённые изображения "
-        "(или /quit для отмены)."
+        _with_quit("Отправьте сообщение рассылки — текст и/или прикреплённые изображения.")
     )
 
 
@@ -671,7 +698,7 @@ async def broadcast_send(message: Message, state: FSMContext, bot: Bot) -> None:
         or message.audio or message.voice or message.sticker
     )
     if not has_media and not (message.text or message.caption or "").strip():
-        await message.answer("❌ Пришлите текст и/или изображение.")
+        await message.answer(_with_quit("❌ Пришлите текст и/или изображение."))
         return
 
     await state.clear()
@@ -698,7 +725,7 @@ async def _ask_confirm(message: Message, state: FSMContext, action: str, phrase:
     await state.set_state(AdminForm.confirm_action)
     await state.update_data(action=action, phrase=phrase)
     await message.answer(
-        f"{prompt}\n\nНапишите <b>{phrase}</b> для подтверждения или /quit для отмены."
+        _with_quit(f"{prompt}\n\nНапишите <b>{phrase}</b> для подтверждения.")
     )
 
 

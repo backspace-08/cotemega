@@ -22,7 +22,7 @@ from core.keyboards import RARITY_LABELS
 from core.logger import logger
 from core.texts import RARITY_EMOJI, RARITY_ORDER, TYPE_EMOJI
 from core.utils import run_db
-from features.admin import _quit_if_requested, is_admin
+from features.admin import _quit_if_requested, _with_quit, is_admin
 from seed import apply_catalog
 from services import r2
 
@@ -143,7 +143,7 @@ def _draft_preview(d: dict) -> str:
 
 def _edit_text(entry: dict) -> str:
     return (
-        f"✏️ <b>{escape(entry['name_en'])}</b> (id {entry.get('id')})\n"
+        f"✏️ <b>{escape(entry['name_en'])}</b> (id <code>{entry.get('id')}</code>)\n"
         f"name_ru: {escape(entry.get('name_ru', ''))}\n"
         f"редкость: {entry.get('rarity')}\n"
         f"тип: {entry.get('type')} · пол: {entry.get('gender')}\n"
@@ -244,14 +244,18 @@ async def add_char_rarity(callback: CallbackQuery, callback_data: AdminCharCB, s
 
 @router.message(StateFilter(CharForm.add_media), is_admin)
 async def add_char_media(message: Message, state: FSMContext) -> None:
+    if await _quit_if_requested(message, state):
+        return
     info = _media_info(message)
     if info is None:
-        await message.answer("Пришлите изображение/видео/файл или /quit.")
+        await message.answer(_with_quit("Пришлите изображение/видео/файл."))
         return
     file_id, ext, content_type = info
     await state.update_data(file_id=file_id, ext=ext, content_type=content_type)
     await state.set_state(CharForm.add_name_en)
-    await message.answer("Введите <b>английское имя</b> (<code>name_en</code>) — основа имени файла.")
+    await message.answer(
+        _with_quit("Введите <b>английское имя</b> (<code>name_en</code>) — основа имени файла.")
+    )
 
 
 @router.message(StateFilter(CharForm.add_name_en), is_admin)
@@ -260,11 +264,11 @@ async def add_char_name_en(message: Message, state: FSMContext) -> None:
         return
     name = (message.text or "").strip()
     if not name:
-        await message.answer("Введите имя текстом или /quit.")
+        await message.answer(_with_quit("Введите имя текстом."))
         return
     await state.update_data(name_en=name)
     await state.set_state(CharForm.add_name_ru)
-    await message.answer("Введите <b>русское имя</b> (<code>name_ru</code>).")
+    await message.answer(_with_quit("Введите <b>русское имя</b> (<code>name_ru</code>)."))
 
 
 @router.message(StateFilter(CharForm.add_name_ru), is_admin)
@@ -273,7 +277,7 @@ async def add_char_name_ru(message: Message, state: FSMContext) -> None:
         return
     name = (message.text or "").strip()
     if not name:
-        await message.answer("Введите имя текстом или /quit.")
+        await message.answer(_with_quit("Введите имя текстом."))
         return
     await state.update_data(name_ru=name)
     await state.set_state(CharForm.add_type)
@@ -292,7 +296,7 @@ async def add_char_type(callback: CallbackQuery, callback_data: AdminCharCB, sta
 async def add_char_gender(callback: CallbackQuery, callback_data: AdminCharCB, state: FSMContext) -> None:
     await state.update_data(gender=callback_data.value)
     await state.set_state(CharForm.add_health)
-    await callback.message.edit_text("Введите <b>HP</b> (кратно 100, напр. 6000).")
+    await callback.message.edit_text(_with_quit("Введите <b>HP</b> (кратно 100, напр. 6000)."))
     await callback.answer()
 
 
@@ -303,11 +307,11 @@ async def add_char_health(message: Message, state: FSMContext) -> None:
     try:
         health = int((message.text or "").strip())
     except ValueError:
-        await message.answer("Введите целое число (кратно 100) или /quit.")
+        await message.answer(_with_quit("Введите целое число (кратно 100)."))
         return
     await state.update_data(health=health)
     await state.set_state(CharForm.add_attack)
-    await message.answer("Введите <b>ATK</b> (кратно 100, напр. 2000).")
+    await message.answer(_with_quit("Введите <b>ATK</b> (кратно 100, напр. 2000)."))
 
 
 @router.message(StateFilter(CharForm.add_attack), is_admin)
@@ -317,7 +321,7 @@ async def add_char_attack(message: Message, state: FSMContext) -> None:
     try:
         attack = int((message.text or "").strip())
     except ValueError:
-        await message.answer("Введите целое число (кратно 100) или /quit.")
+        await message.answer(_with_quit("Введите целое число (кратно 100)."))
         return
     await state.update_data(attack=attack)
     await state.set_state(CharForm.add_confirm)
@@ -344,7 +348,7 @@ async def add_char_confirm(callback: CallbackQuery, callback_data: AdminCharCB, 
     await state.clear()
     await callback.message.edit_text(
         f"✅ Добавлен <b>{escape(entry['name_en'])}</b>\n"
-        f"id {entry['id']} · файл <code>{entry['filename']}</code>"
+        f"id <code>{entry['id']}</code> · файл <code>{entry['filename']}</code>"
     )
 
 
@@ -428,7 +432,7 @@ async def edit_char_field(callback: CallbackQuery, callback_data: AdminCharCB, s
     await state.update_data(edit_field=field)
     if field == "art":
         await state.set_state(CharForm.edit_media)
-        await callback.message.edit_text("Пришлите новый арт (лучше файлом).")
+        await callback.message.edit_text(_with_quit("Пришлите новый арт (лучше файлом)."))
     else:
         await state.set_state(CharForm.edit_value)
         prompts = {
@@ -438,7 +442,7 @@ async def edit_char_field(callback: CallbackQuery, callback_data: AdminCharCB, s
             "health": "Введите новый HP (кратно 100).",
             "attack": "Введите новый ATK (кратно 100).",
         }
-        await callback.message.edit_text(prompts[field])
+        await callback.message.edit_text(_with_quit(prompts[field]))
     await callback.answer()
 
 
@@ -458,19 +462,19 @@ async def edit_char_value(message: Message, state: FSMContext) -> None:
         update = {"name_ru": raw}
     elif field == "type":
         if raw not in ("1", "2", "3", "4"):
-            await message.answer("Тип — 1, 2, 3 или 4.")
+            await message.answer(_with_quit("Тип — 1, 2, 3 или 4."))
             return
         update = {"type": int(raw)}
     elif field == "gender":
         if raw not in GENDER_LABELS:
-            await message.answer("Пол: male / female / plural / unknown.")
+            await message.answer(_with_quit("Пол: male / female / plural / unknown."))
             return
         update = {"gender": raw}
     elif field in ("health", "attack"):
         try:
             update = {field: int(raw)}
         except ValueError:
-            await message.answer("Введите целое число (кратно 100).")
+            await message.answer(_with_quit("Введите целое число (кратно 100)."))
             return
     else:
         await state.clear()
@@ -490,9 +494,11 @@ async def edit_char_value(message: Message, state: FSMContext) -> None:
 
 @router.message(StateFilter(CharForm.edit_media), is_admin)
 async def edit_char_media(message: Message, state: FSMContext, bot: Bot) -> None:
+    if await _quit_if_requested(message, state):
+        return
     info = _media_info(message)
     if info is None:
-        await message.answer("Пришлите изображение/видео/файл или /quit.")
+        await message.answer(_with_quit("Пришлите изображение/видео/файл."))
         return
     data = await state.get_data()
     name_en = data.get("edit_name")

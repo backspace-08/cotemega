@@ -663,8 +663,12 @@ def get_top_players(
         return result
 
 
-def get_users_page(page: int = 0, limit: int = 5, order_col: str = "rating") -> dict:
-    """A page of users sorted by `order_col` (desc), with wrap-around paging."""
+def get_users_page(page: int = 0, limit: int = 5, order_col: str = "points") -> dict:
+    """A page of users sorted by `order_col` (desc), with wrap-around paging.
+
+    Defaults to points so the admin browser lists players by the same order as
+    the points leaderboard.
+    """
     col = getattr(User, order_col)
     with get_session() as session:
         total = session.execute(select(func.count()).select_from(User)).scalar() or 0
@@ -681,7 +685,7 @@ def get_users_page(page: int = 0, limit: int = 5, order_col: str = "rating") -> 
         "total": total,
         "total_pages": total_pages,
         "items": [
-            {"user_id": r[0], "username": r[1], "first_name": r[2], "rating": r[3] or 1000.0}
+            {"user_id": r[0], "username": r[1], "first_name": r[2], "points": int(r[3] or 0)}
             for r in rows
         ],
     }
