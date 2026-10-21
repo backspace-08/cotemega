@@ -21,6 +21,7 @@ from config import (
 from core.callbacks import ArenaCB, BattleCB, MenuCB
 from core.i18n import t
 from core.logger import logger
+from core.texts import duration_text
 from core.utils import (
     run_db,
     safe_delete_message,
@@ -274,7 +275,7 @@ async def show_leagues(callback: CallbackQuery, bot: Bot, user_id: int, lang: st
         + t(lang, "Ваша лига - {league}", league=current)
         + "\n"
         + rating_line
-        + t(lang, "До конца сезона: {days} дн.", days=status["days_left"])
+        + t(lang, "До конца сезона: {time}", time=duration_text(lang, status["seconds_left"]))
     )
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(callback.message.chat.id, text, reply_markup=back_to_arena_kb(lang))

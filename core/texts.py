@@ -105,6 +105,18 @@ def enters_battle(lang: str | None, gender: str) -> str:
     return gendered(gender, "Вступает", "Вступает", neutral="Вступает", plural="Вступают")
 
 
+def duration_text(lang: str | None, seconds) -> str:
+    """Human remaining time: days while >= 1 day, then hours, then minutes."""
+    seconds = max(0, int(seconds))
+    days, rest = divmod(seconds, 86400)
+    if days:
+        return t(lang, "{n} дн.", n=days)
+    hours, rest = divmod(rest, 3600)
+    if hours:
+        return t(lang, "{n} ч.", n=hours)
+    return t(lang, "{n} мин.", n=rest // 60)
+
+
 def loc_rarity(lang: str | None, rarity: str) -> str:
     return t(lang, RARITY_DISPLAY.get(rarity, rarity))
 

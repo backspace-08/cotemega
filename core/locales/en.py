@@ -56,7 +56,10 @@ EN = {
     "место {rank}/{total}": "place {rank}/{total}",
     "🔱 <b>Лиги</b>": "🔱 <b>Leagues</b>",
     "Ваша лига - {league}": "Your league - {league}",
-    "До конца сезона: {days} дн.": "Season ends in: {days} days",
+    "До конца сезона: {time}": "Season ends in: {time}",
+    "{n} дн.": "{n} d",
+    "{n} ч.": "{n} h",
+    "{n} мин.": "{n} min",
     "Лига — награда — место": "League — reward — place",
     "топ 5%": "top 5%",
     "топ 10%": "top 10%",
@@ -290,10 +293,11 @@ EN = {
     "Персонаж уже выбран": "This character is already selected",
 
     # ── Arena: proactive notifications ───────────────────────────────
-    "🏁 Сезон окончен!\nЛига - {league}\nМесто - {place}/{total}\n"
+    "🏁 Сезон арены окончен!\nЛига - {league}\nМесто - {place}/{total}\n"
     "📊 Рейтинг - {rating}\nНаграды - 🔮{shards}, 🎴{spins}":
-        "🏁 Season over!\nLeague - {league}\nPlace - {place}/{total}\n"
+        "🏁 Arena season is over!\nLeague - {league}\nPlace - {place}/{total}\n"
         "📊 Rating - {rating}\nRewards - 🔮{shards}, 🎴{spins}",
+    "🏁 Сезон арены окончен!\nЛига - {league}": "🏁 Arena season is over!\nLeague - {league}",
     "<b>Арена</b>\n📉 Ваш рейтинг снижен из-за неактивности: {old:.0f} → {new:.0f} (−{delta:.0f}).\n"
     "Сыграйте бой, чтобы остановить снижение.":
         "<b>Arena</b>\n📉 Your rating dropped due to inactivity: {old:.0f} → {new:.0f} (−{delta:.0f}).\n"

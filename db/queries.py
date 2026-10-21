@@ -721,6 +721,13 @@ def get_user_rank(user_id: int) -> int:
         return above + 1
 
 
+def list_users_rating_matches() -> list[tuple[int, int]]:
+    """(user_id, rating_matches) for every user — used by season-end notices."""
+    with get_session() as session:
+        rows = session.execute(select(User.user_id, User.rating_matches)).all()
+    return [(r[0], int(r[1] or 0)) for r in rows]
+
+
 def list_ranked_users() -> list[dict]:
     with get_session() as session:
         rows = session.execute(
@@ -741,15 +748,22 @@ def list_ranked_users() -> list[dict]:
     ]
 
 
-def soft_reset_rating(user_id: int, rating: float, rd: float, vol: float) -> None:
+def soft_reset_all_ratings(center: float, k: float, rd_floor: float, vol: float) -> int:
+    """Soft-reset every player's rating and restart calibration at 0/10.
+
+    Runs as a single UPDATE so the new season starts for everyone at once —
+    including players who never finished calibration.
+    """
     with get_session() as session:
-        user = session.get(User, user_id)
-        if user is None:
-            return
-        user.rating = rating
-        user.rd = rd
-        user.vol = vol
-        user.rating_matches = 0
+        result = session.execute(
+            sql_update(User).values(
+                rating=center + (func.coalesce(User.rating, center) - center) * k,
+                rd=func.least(350.0, func.greatest(func.coalesce(User.rd, 350.0), rd_floor)),
+                vol=vol,
+                rating_matches=0,
+            )
+        )
+        return result.rowcount or 0
 
 
 def decayed_rating(
