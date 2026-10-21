@@ -166,11 +166,13 @@ EN = {
     "🥷 Имя: {name}\n💠 Очки: {points}\n🎴 Количество круток: {spins}\n"
     "🔮 Количество осколков: {shards}\n🧧 Количество супер круток: {super_spins}\n"
     "📅 Дата создания аккаунта: {created}\n{league}\n{rating}\n"
+    "⚔️ PvP-матчи:\n"
     "🏆 Победы: {wins} | 💀 Поражения: {losses}\n"
     "📊 Винрейт: {winrate}% (всего игр: {games})":
         "🥷 Name: {name}\n💠 Points: {points}\n🎴 Spins: {spins}\n"
         "🔮 Shards: {shards}\n🧧 Super spins: {super_spins}\n"
         "📅 Account created: {created}\n{league}\n{rating}\n"
+        "⚔️ PvP matches:\n"
         "🏆 Wins: {wins} | 💀 Losses: {losses}\n"
         "📊 Winrate: {winrate}% (total games: {games})",
     "🎯 Калибровка {matches}/{total}": "🎯 Calibration {matches}/{total}",
@@ -232,8 +234,8 @@ EN = {
     "💀 Вы проиграли боту.": "💀 You lost to the bot.",
     "🤖 Рейтинг бота: {rating} ({delta:+d})": "🤖 Bot rating: {rating} ({delta:+d})",
     "Калибровка": "Calibration",
-    "+{delta} MMR 🏆": "+{delta} MMR 🏆",
-    "-{delta} MMR 🏆": "-{delta} MMR 🏆",
+    "+{delta} рейтинга 🏆": "+{delta} rating 🏆",
+    "-{delta} рейтинга 🏆": "-{delta} rating 🏆",
     "Противник не успел выбрать действия": "The opponent ran out of time to choose actions",
     "Вы победили <b>{name}</b>!{extra}\n{line}": "You defeated <b>{name}</b>!{extra}\n{line}",
     "Вы проиграли <b>{name}</b>!{extra}\n{line}": "You lost to <b>{name}</b>!{extra}\n{line}",

@@ -82,6 +82,12 @@ _ADD_COLUMNS_SQL = [
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS pve_losses INTEGER DEFAULT 0",
 ]
 
+# Removed columns (append-only). Dropping is destructive, so only list columns
+# that nothing reads or writes anymore.
+_DROP_COLUMNS_SQL = [
+    "ALTER TABLE users DROP COLUMN IF EXISTS mmr",
+]
+
 
 def _ensure_language_column() -> None:
     """Add `users.language`, defaulting every pre-existing user to Russian.
@@ -114,6 +120,13 @@ def init_db() -> None:
                 conn.execute(text(statement))
         except Exception as e:  # noqa: BLE001
             logger.warning(f"Schema migration failed ({statement}): {e}")
+
+    for statement in _DROP_COLUMNS_SQL:
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(statement))
+        except Exception as e:  # noqa: BLE001
+            logger.warning(f"Schema drop failed ({statement}): {e}")
 
     try:
         with engine.begin() as conn:

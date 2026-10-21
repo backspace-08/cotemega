@@ -42,7 +42,6 @@ class UserData:
     shards: int
     spins: int
     super_spins: int
-    mmr: int
     rating: float
     rating_matches: int
     arena_wins: int
@@ -95,7 +94,6 @@ def _to_user_data(user: User) -> UserData:
         shards=user.shards or 0,
         spins=user.spins or 0,
         super_spins=user.super_spins or 0,
-        mmr=user.mmr or 0,
         rating=user.rating or 1000.0,
         rating_matches=user.rating_matches or 0,
         arena_wins=user.arena_wins or 0,
@@ -169,7 +167,7 @@ def apply_arena_reset(user_id: int, spins: int, shards: int) -> None:
         session.execute(
             sql_update(User)
             .where(User.user_id == user_id)
-            .values(mmr=0, spins=User.spins + spins, shards=User.shards + shards)
+            .values(spins=User.spins + spins, shards=User.shards + shards)
         )
 
 
@@ -882,7 +880,6 @@ def reset_all_progress() -> int:
         result = session.execute(
             sql_update(User).values(
                 points=0,
-                mmr=0,
                 rating=ARENA_RATING_CENTER,
                 rd=350.0,
                 vol=0.06,

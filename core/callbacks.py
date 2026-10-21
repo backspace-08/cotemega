@@ -7,7 +7,7 @@ class MenuCB(CallbackData, prefix="menu"):
 
 
 class TopCB(CallbackData, prefix="top"):
-    kind: str  # points | mmr
+    kind: str  # points | rating
 
 
 class GachaCB(CallbackData, prefix="gacha"):

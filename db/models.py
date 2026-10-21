@@ -74,7 +74,6 @@ class User(Base):
     shards = Column(Integer, default=0)
     spins = Column(Integer, default=START_SPINS)
     super_spins = Column(Integer, default=0)
-    mmr = Column(Integer, default=0)
     last_button_press = Column(TIMESTAMP)
     created_at = Column(TIMESTAMP, default=func.now())
 

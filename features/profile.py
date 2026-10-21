@@ -56,6 +56,7 @@ async def show_profile(callback: CallbackQuery, bot: Bot, user_id: int, lang: st
         "📅 Дата создания аккаунта: {created}\n"
         "{league}\n"
         "{rating}\n"
+        "⚔️ PvP-матчи:\n"
         "🏆 Победы: {wins} | 💀 Поражения: {losses}\n"
         "📊 Винрейт: {winrate}% (всего игр: {games})",
         name=escape(name),

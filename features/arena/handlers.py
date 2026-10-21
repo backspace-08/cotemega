@@ -852,11 +852,11 @@ async def _finish_match(
     if w_matches < ARENA_CALIBRATION_MATCHES:
         w_line = t(w_lang, "Калибровка")
     else:
-        w_line = t(w_lang, "+{delta} MMR 🏆", delta=result["winner_delta"])
+        w_line = t(w_lang, "+{delta} рейтинга 🏆", delta=result["winner_delta"])
     if l_matches < ARENA_CALIBRATION_MATCHES:
         l_line = t(l_lang, "Калибровка")
     else:
-        l_line = t(l_lang, "-{delta} MMR 🏆", delta=result["loser_delta"])
+        l_line = t(l_lang, "-{delta} рейтинга 🏆", delta=result["loser_delta"])
 
     timeout_winner = "\n" + t(w_lang, "Противник не успел выбрать действия") if timeout else ""
     timeout_loser = "\n" + t(l_lang, "Вы не успели выбрать действия") if timeout else ""
