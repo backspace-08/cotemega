@@ -145,7 +145,7 @@ ARENA_RESET_K = 0.5                # soft reset к центру
 ARENA_RESET_RD_FLOOR = 200.0       # минимальный RD при reset
 ARENA_RATING_CENTER = 1000         # якорь шкалы Glicko-2
 ARENA_SEASON_WEEKS = int(os.getenv('ARENA_SEASON_WEEKS', '3'))  # длина сезона
-START_SPINS = int(os.getenv('START_SPINS', '10'))               # стартовые крутки (новичок / после сброса)
+START_SPINS = int(os.getenv('START_SPINS', '20'))               # стартовые крутки (новичок / после сброса)
 
 # ── Магазин ──
 SHOP_MIN_CARDS = int(os.getenv('SHOP_MIN_CARDS', '30'))         # доступ: не меньше N карточек
