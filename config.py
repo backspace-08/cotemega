@@ -60,26 +60,6 @@ WEBHOOK_PORT = int(os.getenv('WEBHOOK_PORT', '9080'))
 
 REDIS_URL = os.getenv('REDIS_URL', 'redis://localhost:6379/0')
 
-PRICES = """
-🧾 <b>Информация о донатах</b>
-💵 <b>Курс</b>
-
-<blockquote>80🔮 - 100₽  -
-300🔮 - 300₽  -
-600🔮 - 500₽  6.5€
-1300🔮 - 1000₽  13€
-3000🔮 - 2000₽  25€
-</blockquote>
-
-💳 Способы оплаты
-<blockquote>🌍 <b>Международная оплата</b>
-Оплата через lava евро
-
-🇷🇺 <b>Оплата в России</b>
-Оплата через lava рублями
-</blockquote>
-"""
-
 NORMAL_SPIN_PROBS = {
     'common': 50,
     'rare': 36.25,
@@ -118,12 +98,14 @@ RUB_PRICES = {
     500: 600,
     1000: 1300,
     2000: 3000,
+    5000: 8000,
 }
 
-EUR_PRICES = {
-    6.5: 600,
-    13: 1300,
-    25: 3000,
+USD_PRICES = {
+    7: 600,
+    14: 1300,
+    27: 3000,
+    69: 8000,
 }
 
 ANIMATED_EXTENSIONS = {'.gif', '.mp4', '.webm'}

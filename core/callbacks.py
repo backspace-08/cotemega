@@ -35,7 +35,7 @@ class ExchangeCB(CallbackData, prefix="exch"):
 
 
 class DonateCB(CallbackData, prefix="donate"):
-    currency: str  # RUB | EUR
+    currency: str  # RUB | USD
 
 
 class BuyCB(CallbackData, prefix="buy"):

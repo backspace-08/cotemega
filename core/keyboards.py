@@ -177,7 +177,7 @@ def exchange_kb(lang: str = "ru") -> InlineKeyboardMarkup:
 def donate_currencies_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     builder.button(text=t(lang, "🇷🇺 Рубли"), callback_data=DonateCB(currency="RUB"))
-    builder.button(text=t(lang, "🇪🇺 Евро"), callback_data=DonateCB(currency="EUR"))
+    builder.button(text=t(lang, "🇺🇸 Доллары"), callback_data=DonateCB(currency="USD"))
     builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     builder.adjust(1)
     return builder.as_markup()

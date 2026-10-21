@@ -136,7 +136,7 @@ EN = {
     "🔮 {shards} осколков за {amount}{currency}\n\nНажмите «Оплатить» для перехода к платёжной системе.":
         "🔮 {shards} shards for {amount}{currency}\n\nTap «Pay» to open the payment system.",
     "🇷🇺 Рубли": "🇷🇺 Rubles",
-    "🇪🇺 Евро": "🇪🇺 Euro",
+    "🇺🇸 Доллары": "🇺🇸 Dollars",
     "↩️ К валютам": "↩️ Currencies",
     "{flag} <b>{currency}</b>\n\n<blockquote>{prices}</blockquote>\n\nНажмите на сумму для оплаты.":
         "{flag} <b>{currency}</b>\n\n<blockquote>{prices}</blockquote>\n\nTap an amount to pay.",

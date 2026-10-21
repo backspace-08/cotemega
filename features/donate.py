@@ -2,7 +2,7 @@ from aiogram import Bot, F, Router
 from aiogram.types import CallbackQuery, InlineKeyboardButton
 from aiogram.utils.keyboard import InlineKeyboardBuilder
 
-from config import EUR_PRICES, RUB_PRICES
+from config import RUB_PRICES, USD_PRICES
 from core.callbacks import BuyCB, DonateCB, MenuCB
 from core.i18n import t
 from core.keyboards import donate_currencies_kb, donate_prices_kb
@@ -17,7 +17,7 @@ USER_AGREEMENT_URL = "https://telegra.ph/Polzovatelskoe-soglashenie-07-09-20"
 
 PRICE_MAP = {
     "RUB": (RUB_PRICES, "₽", "🇷🇺"),
-    "EUR": (EUR_PRICES, "€", "🇪🇺"),
+    "USD": (USD_PRICES, "$", "🇺🇸"),
 }
 
 
