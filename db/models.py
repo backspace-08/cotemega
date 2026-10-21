@@ -69,6 +69,7 @@ class User(Base):
     user_id = Column(BigInteger, primary_key=True)
     username = Column(Text)
     first_name = Column(Text)
+    language = Column(Text)  # NULL = not chosen yet (new users see the picker)
     points = Column(Integer, default=0)
     shards = Column(Integer, default=0)
     spins = Column(Integer, default=START_SPINS)

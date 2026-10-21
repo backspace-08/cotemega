@@ -46,6 +46,8 @@ class MatchRecord:
     p2_cards: list[dict] = field(default_factory=list)
     p1_name: str = ""
     p2_name: str = ""
+    p1_lang: str = "ru"
+    p2_lang: str = "ru"
     player1_msg_id: int | None = None
     player2_msg_id: int | None = None
     vs_bot: bool = False
@@ -72,6 +74,9 @@ class MatchRecord:
 
     def cards_for(self, user_id: int) -> list[dict]:
         return self.p1_cards if user_id == self.player1 else self.p2_cards
+
+    def lang_for(self, user_id: int) -> str:
+        return self.p1_lang if user_id == self.player1 else self.p2_lang
 
     def pending_spent(self) -> int:
         return (
@@ -123,6 +128,8 @@ class MatchStore:
             "p2_cards": json.dumps(record.p2_cards, separators=(",", ":")),
             "p1_name": record.p1_name,
             "p2_name": record.p2_name,
+            "p1_lang": record.p1_lang,
+            "p2_lang": record.p2_lang,
             "player1_msg_id": "" if record.player1_msg_id is None else str(record.player1_msg_id),
             "player2_msg_id": "" if record.player2_msg_id is None else str(record.player2_msg_id),
             "vs_bot": "1" if record.vs_bot else "0",
@@ -160,6 +167,8 @@ class MatchStore:
             p2_cards=json.loads(data.get("p2_cards") or "[]"),
             p1_name=data.get("p1_name", ""),
             p2_name=data.get("p2_name", ""),
+            p1_lang=data.get("p1_lang") or "ru",
+            p2_lang=data.get("p2_lang") or "ru",
             player1_msg_id=int(msg1) if msg1 else None,
             player2_msg_id=int(msg2) if msg2 else None,
             vs_bot=data.get("vs_bot") == "1",

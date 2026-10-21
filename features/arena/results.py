@@ -5,6 +5,7 @@
   and the bot's win/loss counters. The human ladder is untouched.
 """
 
+from core.i18n import t
 from db.queries import (
     get_bot_stats,
     get_rating,
@@ -49,21 +50,32 @@ def record_pve_result(human_id: int, bot_won: bool) -> dict:
     return {"bot_rating": round(updated.rating), "bot_delta": round(updated.rating - bot["rating"])}
 
 
-def bot_winrate_line(bot: dict | None = None) -> str:
+def bot_winrate_line(bot: dict | None = None, lang: str = "ru") -> str:
     bot = bot or get_bot_stats()
     games = bot["wins"] + bot["losses"]
     winrate = (bot["wins"] / games * 100.0) if games else 0.0
-    return (
-        f"🤖 Бот: рейтинг {round(bot['rating'])}\n"
-        f"🏆 Победы: {bot['wins']} | 💀 Поражения: {bot['losses']}\n"
-        f"📊 Винрейт: {winrate:.0f}% (всего игр: {games})"
+    return t(
+        lang,
+        "🤖 Бот: рейтинг {rating}\n"
+        "🏆 Победы: {wins} | 💀 Поражения: {losses}\n"
+        "📊 Винрейт: {winrate}% (всего игр: {games})",
+        rating=round(bot["rating"]),
+        wins=bot["wins"],
+        losses=bot["losses"],
+        winrate=f"{winrate:.0f}",
+        games=games,
     )
 
 
-def human_pve_line(wins: int, losses: int) -> str:
+def human_pve_line(wins: int, losses: int, lang: str = "ru") -> str:
     games = wins + losses
     winrate = (wins / games * 100.0) if games else 0.0
-    return (
-        f"🏆 Победы: {wins} | 💀 Поражения: {losses}\n"
-        f"📊 Винрейт против бота: {winrate:.0f}% (всего игр: {games})"
+    return t(
+        lang,
+        "🏆 Победы: {wins} | 💀 Поражения: {losses}\n"
+        "📊 Винрейт против бота: {winrate}% (всего игр: {games})",
+        wins=wins,
+        losses=losses,
+        winrate=f"{winrate:.0f}",
+        games=games,
     )

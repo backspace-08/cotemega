@@ -82,8 +82,30 @@ _ADD_COLUMNS_SQL = [
 ]
 
 
+def _ensure_language_column() -> None:
+    """Add `users.language`, defaulting every pre-existing user to Russian.
+
+    Runs only when the column is absent, so a user who is halfway through the
+    language picker is never silently switched to Russian on a restart.
+    """
+    with engine.begin() as conn:
+        exists = conn.execute(
+            text(
+                "SELECT 1 FROM information_schema.columns "
+                "WHERE table_name = 'users' AND column_name = 'language'"
+            )
+        ).first()
+    if exists:
+        return
+    with engine.begin() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS language TEXT"))
+        conn.execute(text("UPDATE users SET language = 'ru'"))
+    logger.info("Added users.language; existing users defaulted to 'ru'")
+
+
 def init_db() -> None:
     Base.metadata.create_all(bind=engine)
+    _ensure_language_column()
 
     for statement in _ADD_COLUMNS_SQL:
         try:

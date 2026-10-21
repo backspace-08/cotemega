@@ -8,12 +8,14 @@ from config import (
     ARENA_RESET_K,
     ARENA_RESET_RD_FLOOR,
 )
+from core.i18n import t
 from core.logger import logger
 from core.utils import run_db
 from db.queries import (
     add_season_entry,
     close_season,
     ensure_current_season,
+    get_user_lang,
     list_ranked_users,
     soft_reset_rating,
     start_new_season,
@@ -58,13 +60,23 @@ async def run_season_close(bot) -> dict:
             new_rating = ARENA_RATING_CENTER + (entry["rating"] - ARENA_RATING_CENTER) * ARENA_RESET_K
             new_rd = min(350.0, max(entry["rd"], ARENA_RESET_RD_FLOOR))
             await run_db(soft_reset_rating, user_id, new_rating, new_rd, DEFAULT_VOL)
+            lang = await run_db(get_user_lang, user_id) or "ru"
             await bot.send_message(
                 user_id,
-                f"🏁 Сезон окончен!\n"
-                f"Лига - {league.title}\n"
-                f"Место - {place}/{total}\n"
-                f"📊 Рейтинг - {round(entry['rating'])}\n"
-                f"Награды - 🔮{league.shards}, 🎴{league.spins}",
+                t(
+                    lang,
+                    "🏁 Сезон окончен!\n"
+                    "Лига - {league}\n"
+                    "Место - {place}/{total}\n"
+                    "📊 Рейтинг - {rating}\n"
+                    "Награды - 🔮{shards}, 🎴{spins}",
+                    league=league.title(lang),
+                    place=place,
+                    total=total,
+                    rating=round(entry["rating"]),
+                    shards=league.shards,
+                    spins=league.spins,
+                ),
             )
         except Exception as e:  # noqa: BLE001
             logger.error(f"Season payout error for {user_id}: {e}")

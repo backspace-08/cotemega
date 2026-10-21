@@ -10,6 +10,7 @@ from core.callbacks import (
     DonateCB,
     ExchangeCB,
     GachaCB,
+    LangCB,
     LevelUpCB,
     MenuCB,
     NoopCB,
@@ -17,50 +18,75 @@ from core.callbacks import (
     ShopCB,
     TopCB,
 )
+from core.i18n import LANG_LABELS, t
 from core.texts import RARITY_EMOJI, RARITY_ORDER, level_cost
 
 
-def main_menu_kb() -> InlineKeyboardMarkup:
+def main_menu_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="🏆 Топ", callback_data=MenuCB(action="top"))
-    builder.button(text="🎴 Получить перса", callback_data=MenuCB(action="gacha"))
-    builder.button(text="🎭 Мои персы", callback_data=MenuCB(action="chars"))
-    builder.button(text="👤 Профиль", callback_data=MenuCB(action="profile"))
-    builder.button(text="🔄 Осколки", callback_data=MenuCB(action="exchange"))
-    builder.button(text="💸 Донат", callback_data=MenuCB(action="donate"))
-    builder.button(text="🛒 Магазин", callback_data=MenuCB(action="shop"))
-    builder.button(text="📰 Новости КП", url="https://t.me/DCOTEFILES")
-    builder.button(text="⚔️ Арена", callback_data=MenuCB(action="arena"))
+    builder.button(text=t(lang, "🏆 Топ"), callback_data=MenuCB(action="top"))
+    builder.button(text=t(lang, "🎴 Получить перса"), callback_data=MenuCB(action="gacha"))
+    builder.button(text=t(lang, "🎭 Мои персы"), callback_data=MenuCB(action="chars"))
+    builder.button(text=t(lang, "👤 Профиль"), callback_data=MenuCB(action="profile"))
+    builder.button(text=t(lang, "🔄 Осколки"), callback_data=MenuCB(action="exchange"))
+    builder.button(text=t(lang, "💸 Донат"), callback_data=MenuCB(action="donate"))
+    builder.button(text=t(lang, "🛒 Магазин"), callback_data=MenuCB(action="shop"))
+    builder.button(text=t(lang, "📰 Новости КП"), url="https://t.me/DCOTEFILES")
+    builder.button(text=t(lang, "⚔️ Арена"), callback_data=MenuCB(action="arena"))
     builder.adjust(2)
     return builder.as_markup()
 
 
-def menu_only_kb() -> InlineKeyboardMarkup:
+def menu_only_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     return builder.as_markup()
 
 
-def top_types_kb() -> InlineKeyboardMarkup:
+def profile_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="По очкам 💠", callback_data=TopCB(kind="points"))
-    builder.button(text="По рейтингу 🏆", callback_data=TopCB(kind="rating"))
-    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
+    builder.button(text=t(lang, "🌐 Язык"), callback_data=MenuCB(action="profile_lang"))
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     builder.adjust(1)
     return builder.as_markup()
 
 
-def spin_menu_kb(has_super: bool) -> InlineKeyboardMarkup:
+def language_kb(current: str | None, back: str = "menu") -> InlineKeyboardMarkup:
+    """Language picker. `back` decides what the cancel button returns to."""
     builder = InlineKeyboardBuilder()
-    builder.button(text="🎴 Получить перса", callback_data=GachaCB(kind="normal"))
+    for code, label in LANG_LABELS.items():
+        mark = "✅ " if code == current else ""
+        builder.button(text=f"{mark}{label}", callback_data=LangCB(code=code, back=back))
+    if back == "profile":
+        builder.button(text=t(current, "↩️ Назад"), callback_data=MenuCB(action="profile"))
+    elif back != "start":
+        builder.button(text=t(current, "↩️ В меню"), callback_data=MenuCB(action="main"))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def top_types_kb(lang: str = "ru") -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t(lang, "По очкам 💠"), callback_data=TopCB(kind="points"))
+    builder.button(text=t(lang, "По рейтингу 🏆"), callback_data=TopCB(kind="rating"))
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
+    builder.adjust(1)
+    return builder.as_markup()
+
+
+def spin_menu_kb(has_super: bool, lang: str = "ru") -> InlineKeyboardMarkup:
+    builder = InlineKeyboardBuilder()
+    builder.button(text=t(lang, "🎴 Получить перса"), callback_data=GachaCB(kind="normal"))
     if has_super:
-        builder.button(text="🧧 Получить перса", callback_data=GachaCB(kind="super"))
-    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
+        builder.button(text=t(lang, "🧧 Получить перса"), callback_data=GachaCB(kind="super"))
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     builder.adjust(1)
     return builder.as_markup()
 
 
-def rarity_menu_kb(user_counts: dict, total_counts: dict, has_special: bool) -> InlineKeyboardMarkup:
+def rarity_menu_kb(
+    user_counts: dict, total_counts: dict, has_special: bool, lang: str = "ru"
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     labels = {
         "common": "Обычные",
@@ -71,15 +97,15 @@ def rarity_menu_kb(user_counts: dict, total_counts: dict, has_special: bool) -> 
     }
     for rarity, label in labels.items():
         builder.button(
-            text=f"{RARITY_EMOJI[rarity]} {label} {user_counts.get(rarity, 0)}/{total_counts.get(rarity, 0)}",
+            text=f"{RARITY_EMOJI[rarity]} {t(lang, label)} {user_counts.get(rarity, 0)}/{total_counts.get(rarity, 0)}",
             callback_data=RarityCB(rarity=rarity),
         )
     if has_special:
         builder.button(
-            text=f"{RARITY_EMOJI['special']} Специальные {user_counts.get('special', 0)}",
+            text=f"{RARITY_EMOJI['special']} {t(lang, 'Специальные')} {user_counts.get('special', 0)}",
             callback_data=RarityCB(rarity="special"),
         )
-    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     builder.adjust(1)
     return builder.as_markup()
 
@@ -91,6 +117,7 @@ def character_nav_kb(
     page: int,
     total_pages: int,
     level: int,
+    lang: str = "ru",
 ) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
 
@@ -105,25 +132,30 @@ def character_nav_kb(
 
     # Row 2: upgrade to next level (specials level up only in the shop)
     if level >= MAX_CHARACTER_LEVEL:
-        builder.row(InlineKeyboardButton(text=f"👑 Максимальный уровень ({MAX_CHARACTER_LEVEL})", callback_data=NoopCB().pack()))
+        builder.row(
+            InlineKeyboardButton(
+                text=t(lang, "👑 Максимальный уровень ({level})", level=MAX_CHARACTER_LEVEL),
+                callback_data=NoopCB().pack(),
+            )
+        )
     elif rarity == "special":
-        builder.row(InlineKeyboardButton(text="🛒 Только в магазине", callback_data=NoopCB().pack()))
+        builder.row(InlineKeyboardButton(text=t(lang, "🛒 Только в магазине"), callback_data=NoopCB().pack()))
     else:
         cost = level_cost(rarity, level)
         builder.row(
             InlineKeyboardButton(
-                text=f"⬆️ Улучшить до Lv.{level + 1} — {cost}🔮",
+                text=t(lang, "⬆️ Улучшить до Lv.{level} — {cost}🔮", level=level + 1, cost=cost),
                 callback_data=LevelUpCB(char_id=char_id, rarity=rarity, page=page).pack(),
             )
         )
 
     # Rows 3-4: navigation
-    builder.row(InlineKeyboardButton(text="↩️ В меню редкостей", callback_data=MenuCB(action="chars").pack()))
-    builder.row(InlineKeyboardButton(text="🏠 В меню", callback_data=MenuCB(action="main").pack()))
+    builder.row(InlineKeyboardButton(text=t(lang, "↩️ В меню редкостей"), callback_data=MenuCB(action="chars").pack()))
+    builder.row(InlineKeyboardButton(text=t(lang, "🏠 В меню"), callback_data=MenuCB(action="main").pack()))
     return builder.as_markup()
 
 
-def exchange_kb() -> InlineKeyboardMarkup:
+def exchange_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     rows = [
         (ExchangeCB(target="spins", count=1), "10🔮 на 1🎴"),
@@ -136,30 +168,32 @@ def exchange_kb() -> InlineKeyboardMarkup:
         (ExchangeCB(target="super_spins", count=0), "все🔮 на 🧧"),
     ]
     for cb, text in rows:
-        builder.button(text=text, callback_data=cb)
-    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
+        builder.button(text=t(lang, text), callback_data=cb)
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     builder.adjust(2, 2, 2, 2, 1)
     return builder.as_markup()
 
 
-def donate_currencies_kb() -> InlineKeyboardMarkup:
+def donate_currencies_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="🇷🇺 Рубли", callback_data=DonateCB(currency="RUB"))
-    builder.button(text="🇪🇺 Евро", callback_data=DonateCB(currency="EUR"))
-    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
+    builder.button(text=t(lang, "🇷🇺 Рубли"), callback_data=DonateCB(currency="RUB"))
+    builder.button(text=t(lang, "🇪🇺 Евро"), callback_data=DonateCB(currency="EUR"))
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     builder.adjust(1)
     return builder.as_markup()
 
 
-def donate_prices_kb(currency: str, price_dict: dict, symbol: str) -> InlineKeyboardMarkup:
+def donate_prices_kb(
+    currency: str, price_dict: dict, symbol: str, lang: str = "ru"
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     for amount, shards in price_dict.items():
         builder.button(
             text=f"{amount}{symbol} - {shards}🔮",
             callback_data=BuyCB(currency=currency, amount=str(amount), shards=shards),
         )
-    builder.button(text="↩️ К валютам", callback_data=MenuCB(action="donate"))
-    builder.button(text="🏠 В меню", callback_data=MenuCB(action="main"))
+    builder.button(text=t(lang, "↩️ К валютам"), callback_data=MenuCB(action="donate"))
+    builder.button(text=t(lang, "🏠 В меню"), callback_data=MenuCB(action="main"))
     builder.adjust(1)
     return builder.as_markup()
 
@@ -310,7 +344,9 @@ def admin_char_kb(
     return builder.as_markup()
 
 
-def shop_kb(day: int, index: int, total: int, char_id: int, state: str) -> InlineKeyboardMarkup:
+def shop_kb(
+    day: int, index: int, total: int, char_id: int, state: str, lang: str = "ru"
+) -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
     nav = []
     if total > 1:
@@ -321,21 +357,26 @@ def shop_kb(day: int, index: int, total: int, char_id: int, state: str) -> Inlin
     builder.row(*nav)
 
     if state == "buy":
-        builder.row(InlineKeyboardButton(
-            text="🛒 Купить",
-            callback_data=ShopCB(action="buy", day=day, index=index, char_id=char_id).pack(),
-        ))
+        builder.row(
+            InlineKeyboardButton(
+                text=t(lang, "🛒 Купить"),
+                callback_data=ShopCB(action="buy", day=day, index=index, char_id=char_id).pack(),
+            )
+        )
     elif state == "purchased":
-        builder.row(InlineKeyboardButton(text="✅ Куплено", callback_data=NoopCB().pack()))
+        builder.row(InlineKeyboardButton(text=t(lang, "✅ Куплено"), callback_data=NoopCB().pack()))
     else:  # maxed
-        builder.row(InlineKeyboardButton(
-            text=f"👑 Максимальный уровень ({MAX_CHARACTER_LEVEL})", callback_data=NoopCB().pack()
-        ))
-    builder.row(InlineKeyboardButton(text="↩️ В меню", callback_data=MenuCB(action="main").pack()))
+        builder.row(
+            InlineKeyboardButton(
+                text=t(lang, "👑 Максимальный уровень ({level})", level=MAX_CHARACTER_LEVEL),
+                callback_data=NoopCB().pack(),
+            )
+        )
+    builder.row(InlineKeyboardButton(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main").pack()))
     return builder.as_markup()
 
 
-def shop_empty_kb() -> InlineKeyboardMarkup:
+def shop_empty_kb(lang: str = "ru") -> InlineKeyboardMarkup:
     builder = InlineKeyboardBuilder()
-    builder.button(text="↩️ В меню", callback_data=MenuCB(action="main"))
+    builder.button(text=t(lang, "↩️ В меню"), callback_data=MenuCB(action="main"))
     return builder.as_markup()

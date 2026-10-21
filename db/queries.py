@@ -5,6 +5,7 @@ from datetime import datetime, timedelta, timezone
 from sqlalchemy import and_, delete, func, or_, select
 from sqlalchemy import update as sql_update
 
+from core.i18n import t
 from config import (
     ARENA_CALIBRATION_MATCHES,
     ARENA_RATING_CENTER,
@@ -36,6 +37,7 @@ class UserData:
     user_id: int
     username: str | None
     first_name: str | None
+    language: str | None
     points: int
     shards: int
     spins: int
@@ -57,6 +59,8 @@ class CharacterBase:
 
     char_id: int
     name: str
+    name_ru: str
+    name_en: str
     rarity: str
     type: int
     gender: str
@@ -86,6 +90,7 @@ def _to_user_data(user: User) -> UserData:
         user_id=user.user_id,
         username=user.username,
         first_name=user.first_name,
+        language=user.language,
         points=user.points or 0,
         shards=user.shards or 0,
         spins=user.spins or 0,
@@ -106,16 +111,32 @@ def _to_user_data(user: User) -> UserData:
 # USERS
 # ──────────────────────────────────────────────
 
-def ensure_user(user_id: int, username: str | None = None, first_name: str | None = None) -> None:
+def ensure_user(user_id: int, username: str | None = None, first_name: str | None = None) -> str | None:
+    """Create/refresh the user and return their language (None = not chosen)."""
     with get_session() as session:
         user = session.get(User, user_id)
         if not user:
             session.add(User(user_id=user_id, username=username, first_name=first_name))
-            return
+            return None
         if username is not None and user.username != username:
             user.username = username
         if first_name is not None and user.first_name != first_name:
             user.first_name = first_name
+        return user.language
+
+
+def get_user_lang(user_id: int) -> str | None:
+    with get_session() as session:
+        return session.execute(
+            select(User.language).where(User.user_id == user_id)
+        ).scalar_one_or_none()
+
+
+def set_user_language(user_id: int, language: str) -> None:
+    with get_session() as session:
+        session.execute(
+            sql_update(User).where(User.user_id == user_id).values(language=language)
+        )
 
 
 def get_user_data(user_id: int) -> UserData | None:
@@ -354,6 +375,8 @@ def get_all_character_bases() -> list[CharacterBase]:
             CharacterBase(
                 char_id=c.char_id,
                 name=c.translation or c.char_name,
+                name_ru=c.translation or c.char_name,
+                name_en=c.char_name or c.translation,
                 rarity=c.rarity,
                 type=int(c.type or 0),
                 gender=c.gender or "unknown",
@@ -411,19 +434,20 @@ def get_deck(user_id: int, deck_index: int) -> dict | None:
         return _deck_dict(deck) if deck else None
 
 
-def ensure_default_deck(user_id: int) -> None:
+def ensure_default_deck(user_id: int, lang: str = "ru") -> None:
     with get_session() as session:
         exists = session.execute(
             select(ArenaDeck.deck_index).where(ArenaDeck.user_id == user_id).limit(1)
         ).first()
         if exists is None:
-            session.add(ArenaDeck(user_id=user_id, deck_index=0, name="Колода 1", is_main=True))
+            name = f"{t(lang, 'Колода')} 1"
+            session.add(ArenaDeck(user_id=user_id, deck_index=0, name=name, is_main=True))
 
 
-def get_main_deck(user_id: int) -> dict | None:
+def get_main_deck(user_id: int, lang: str = "ru") -> dict | None:
     decks = get_decks(user_id)
     if not decks:
-        ensure_default_deck(user_id)
+        ensure_default_deck(user_id, lang)
         decks = get_decks(user_id)
     return next((deck for deck in decks if deck["is_main"]), decks[0] if decks else None)
 
@@ -434,7 +458,7 @@ def get_arena_deck_ids(user_id: int) -> list[int | None]:
     return list(deck["char_ids"]) if deck else [None, None, None]
 
 
-def ensure_decks(user_id: int) -> None:
+def ensure_decks(user_id: int, lang: str = "ru") -> None:
     """Make sure the user has all MAX_ARENA_DECKS decks (deck 0 is the main)."""
     with get_session() as session:
         existing = set(
@@ -447,14 +471,14 @@ def ensure_decks(user_id: int) -> None:
                 ArenaDeck(
                     user_id=user_id,
                     deck_index=index,
-                    name=f"Колода {index + 1}",
+                    name=t(lang, "Колода {index}", index=index + 1),
                     is_main=(index == 0 and not existing),
                 )
             )
 
 
-def rename_deck(user_id: int, deck_index: int, name: str) -> None:
-    name = (name or "").strip()[:32] or DEFAULT_DECK_NAME
+def rename_deck(user_id: int, deck_index: int, name: str, lang: str = "ru") -> None:
+    name = (name or "").strip()[:32] or t(lang, DEFAULT_DECK_NAME)
     with get_session() as session:
         session.execute(
             sql_update(ArenaDeck)

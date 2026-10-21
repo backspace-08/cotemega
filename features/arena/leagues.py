@@ -6,6 +6,8 @@ players (calibrated, >= 10 games this season). Rewards are paid at season end.
 
 from dataclasses import dataclass
 
+from core.i18n import t
+
 
 @dataclass(frozen=True)
 class League:
@@ -16,9 +18,8 @@ class League:
     shards: int
     spins: int
 
-    @property
-    def title(self) -> str:
-        return f"{self.emoji} {self.name}"
+    def title(self, lang: str = "ru") -> str:
+        return f"{self.emoji} {t(lang, self.name)}"
 
 
 MASTER = League("master", "Мастер", "🌟", 0.05, 500, 40)
@@ -58,19 +59,35 @@ def percentile(rank: int, total: int) -> int:
     return max(1, round(rank / total * 100))
 
 
-def position_text(rank: int, total: int, top_min: int = 10) -> str:
+def position_text(lang: str, rank: int, total: int, top_min: int = 10) -> str:
     """Human position. Percentiles only make sense with enough players, so for
     a small population we show just the place (e.g. "место 1/1")."""
     if total >= top_min:
-        return f"топ {percentile(rank, total)}%, место {rank}/{total}"
-    return f"место {rank}/{total}"
+        return t(
+            lang,
+            "топ {pct}%, место {rank}/{total}",
+            pct=percentile(rank, total),
+            rank=rank,
+            total=total,
+        )
+    return t(lang, "место {rank}/{total}", rank=rank, total=total)
 
 
-def league_table_text() -> str:
-    lines = ["<blockquote>Лига — награда — место",
-             f"🌟 Мастер — {MASTER.shards}🔮, {MASTER.spins}🎴 — топ 5%",
-             f"💎 Алмазная — {DIAMOND.shards}🔮, {DIAMOND.spins}🎴 — топ 10%",
-             f"✨ Золотая — {GOLD.shards}🔮, {GOLD.spins}🎴 — топ 30%",
-             f"⚪ Серебряная — {SILVER.shards}🔮, {SILVER.spins}🎴 — топ 60%",
-             f"🔶 Бронзовая — {BRONZE.shards}🔮, {BRONZE.spins}🎴 — остальные</blockquote>"]
+def league_table_text(lang: str = "ru") -> str:
+    rows = [
+        (MASTER, "топ 5%"),
+        (DIAMOND, "топ 10%"),
+        (GOLD, "топ 30%"),
+        (SILVER, "топ 60%"),
+    ]
+    lines = [f"<blockquote>{t(lang, 'Лига — награда — место')}"]
+    for league, band in rows:
+        lines.append(
+            f"{league.emoji} {t(lang, league.name)} — {league.shards}🔮, "
+            f"{league.spins}🎴 — {t(lang, band)}"
+        )
+    lines.append(
+        f"{BRONZE.emoji} {t(lang, BRONZE.name)} — {BRONZE.shards}🔮, "
+        f"{BRONZE.spins}🎴 — {t(lang, 'остальные')}</blockquote>"
+    )
     return "\n".join(lines)

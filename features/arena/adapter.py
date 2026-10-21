@@ -26,6 +26,8 @@ class EngineCharacter:
     hp: int
     atk: int
     name: str = ""
+    name_ru: str = ""
+    name_en: str = ""
     gender: str = "unknown"
     image: str = ""
 
@@ -37,6 +39,8 @@ def card_to_fighter(card) -> EngineCharacter:
         hp=int(card.health),
         atk=int(card.attack),
         name=card.translation or card.char_name,
+        name_ru=card.translation or card.char_name,
+        name_en=card.char_name or card.translation,
         gender=getattr(card, "gender", "unknown"),
         image=str(card.image_path),
     )
@@ -51,6 +55,8 @@ def card_to_meta(card) -> dict:
         "atk": int(card.attack),
         "level": int(getattr(card, "level", 1)),
         "name": card.translation or card.char_name,
+        "name_ru": card.translation or card.char_name,
+        "name_en": card.char_name or card.translation,
         "gender": getattr(card, "gender", "unknown"),
         "image": str(card.image_path),
     }

@@ -43,6 +43,8 @@ def build_record(
     p1_cards: list[dict],
     p2_cards: list[dict],
     first_mover: int,
+    p1_lang: str = "ru",
+    p2_lang: str = "ru",
 ) -> MatchRecord:
     state = build_state(
         [meta_to_fighter(m) for m in p1_cards],
@@ -60,6 +62,8 @@ def build_record(
         p2_cards=p2_cards,
         p1_name=p1_name,
         p2_name=p2_name,
+        p1_lang=p1_lang,
+        p2_lang=p2_lang,
     )
 
 

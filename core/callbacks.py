@@ -71,6 +71,11 @@ class ShopCB(CallbackData, prefix="shop"):
     char_id: int = 0
 
 
+class LangCB(CallbackData, prefix="lang"):
+    code: str  # ru | en
+    back: str = "menu"  # start | profile | menu
+
+
 class NoopCB(CallbackData, prefix="noop"):
     pass
 

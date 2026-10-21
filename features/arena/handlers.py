@@ -19,6 +19,7 @@ from config import (
     CFR_MAX_ACTIVE,
 )
 from core.callbacks import ArenaCB, BattleCB, MenuCB
+from core.i18n import t
 from core.logger import logger
 from core.utils import (
     run_db,
@@ -36,6 +37,7 @@ from db.queries import (
     get_rating,
     get_user_character,
     get_user_data,
+    get_user_lang,
     get_user_rank,
 )
 from features.arena import cfr_player
@@ -92,11 +94,14 @@ _search_tasks: dict[int, asyncio.Task] = {}
 BOT_ID = 0
 
 
-def _search_text(total: int, queued: int) -> str:
-    return (
+def _search_text(total: int, queued: int, lang: str = "ru") -> str:
+    return t(
+        lang,
         "⏳ Если поиск слишком долгий, попробуйте перезайти в него\n"
         "Ищем соперника...\n\n"
-        f"🟢 Сейчас в арене: {total} (в поиске: {queued})"
+        "🟢 Сейчас в арене: {total} (в поиске: {queued})",
+        total=total,
+        queued=queued,
     )
 
 
@@ -106,7 +111,7 @@ def _stop_search_updates(user_id: int) -> None:
         task.cancel()
 
 
-def _start_search_updates(bot: Bot, user_id: int, message_id: int) -> None:
+def _start_search_updates(bot: Bot, user_id: int, message_id: int, lang: str = "ru") -> None:
     _stop_search_updates(user_id)
 
     async def _job() -> None:
@@ -117,10 +122,10 @@ def _start_search_updates(bot: Bot, user_id: int, message_id: int) -> None:
             total, queued = await arena_counts()
             try:
                 await bot.edit_message_text(
-                    _search_text(total, queued),
+                    _search_text(total, queued, lang),
                     chat_id=user_id,
                     message_id=message_id,
-                    reply_markup=queue_kb(),
+                    reply_markup=queue_kb(lang),
                 )
             except TelegramBadRequest:
                 pass
@@ -135,55 +140,21 @@ def _is_human(record: MatchRecord, user_id: int) -> bool:
 def _has_ai(record: MatchRecord) -> bool:
     return BOT_ID in (record.player1, record.player2)
 
-ABOUT_TEXT = (
-    "<b>❤️ Здоровье</b> — очки жизни персонажа\n"
-    "<b>💪 Урон</b> — сила атаки\n\n"
-    "<b>Типы персонажей:</b> 🎭 💢 🎯 ⭐\n"
-    "🎭 Манипуляторы\n"
-    "💢 Силовики\n"
-    "🎯 Тактики\n"
-    "⭐ Идеалисты\n"
-    "Круг силы: 🎭>💢>🎯>⭐>🎭\n"
-    "Бьёшь по слабому типу — урон ×1.3, по сильному — ×0.7.\n\n"
-    "<b>Как проходит ход</b>\n"
-    "⏺ На ход дают очки действий, и потратить нужно <b>все</b>.\n"
-    "Одно действие — это что-то одно:\n"
-    "🔥 Атака — удар по активному персонажу врага\n"
-    "🛡 Защита — щит на следующий ход врага\n"
-    "🔸 Бонус — копит действия на <b>твой</b> следующий ход\n"
-    "🔁 Смена — поставить другого персонажа\n"
-    "ℹ Команды — показать обе колоды\n\n"
-    "<b>Сколько очков</b>\n"
-    "Первым ходит один игрок с 1 очком, второй — с 2.\n"
-    "Дальше: раунды 2–4 — 2 очка, 5–6 — 3, потом 4.\n"
-    "🔸 Бонус добавляет до +4 к следующему ходу, но всего не больше 8.\n\n"
-    "<b>Атака</b>\n"
-    "Бьют только активного врага. Все удары хода летят разом: если враг погиб, "
-    "следующий не получает урон в этот же ход.\n\n"
-    "<b>Защита</b>\n"
-    "🛡 Щиты встречают атаки врага в его следующий ход, гасят их 1 к 1 и сгорают.\n\n"
-    "<b>Смена</b>\n"
-    "🔁 1 раз за ход и стоит 1 очко. Новый персонаж выходит <b>до</b> твоих атак.\n"
-    "Если активный погиб — следующий выходит бесплатно.\n\n"
-    "<b>Скрытое</b>\n"
-    "Ты знаешь лишь сумму щитов и бонусов врага, но не знаешь, что из чего. "
-    "Всё раскрывается, когда срабатывает.\n\n"
-    "<b>Игра</b>\n"
-    "📁 Колода — 3 персонажа. Бой идёт, пока у одной стороны не кончатся персонажи.\n"
-    f"⏳ На ход — {ARENA_TURN_TIMEOUT} секунд.\n"
-    f"💬 За полуход каждый игрок может отправить до {ARENA_COMMENTS_PER_TURN} сообщений сопернику.\n"
-    "🏆 Цель — выбить всех персонажей противника.\n\n"
-    "<b>Лиги и награды:</b>\n"
-    "В меню «🔱 Лиги»"
-)
+def _about_text(lang: str) -> str:
+    return t(
+        lang,
+        "@about",
+        timeout=ARENA_TURN_TIMEOUT,
+        comments=ARENA_COMMENTS_PER_TURN,
+    )
 
 # ──────────────────────────────────────────────
 # MENU / STATIC
 # ──────────────────────────────────────────────
 
 @router.callback_query(MenuCB.filter(F.action == "arena"))
-async def open_arena(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
-    await show_arena_menu(callback, bot, user_id)
+async def open_arena(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
+    await show_arena_menu(callback, bot, user_id, lang)
 
 
 async def _deck_slots(user_id: int) -> list:
@@ -197,6 +168,8 @@ async def _deck_slots(user_id: int) -> list:
             {
                 "type": card.type,
                 "name": card.translation,
+                "name_ru": card.translation or card.char_name,
+                "name_en": card.char_name or card.translation,
                 "hp": card.health,
                 "atk": card.attack,
                 "level": card.level,
@@ -207,85 +180,104 @@ async def _deck_slots(user_id: int) -> list:
     return slots
 
 
-async def _deck_name(user_id: int) -> str:
-    deck = await run_db(get_main_deck, user_id)
-    return deck["name"] if deck else "Твоя колода"
+async def _deck_name(user_id: int, lang: str = "ru") -> str:
+    deck = await run_db(get_main_deck, user_id, lang)
+    return deck["name"] if deck else t(lang, "Твоя колода")
 
 
-async def _player_rating_line(user_id: int) -> str:
+async def _player_rating_line(user_id: int, lang: str = "ru") -> str:
     rating, _rd, _vol, matches = await run_db(get_rating, user_id)
     if matches < ARENA_CALIBRATION_MATCHES:
-        return f"🎯 Калибровка {matches}/{ARENA_CALIBRATION_MATCHES}"
+        return t(
+            lang,
+            "🎯 Калибровка {matches}/{total}",
+            matches=matches,
+            total=ARENA_CALIBRATION_MATCHES,
+        )
     total = await run_db(count_ranked_users)
     rank = await run_db(get_user_rank, user_id)
     league = league_for_rank(rank, total)
-    return f"⚔️ Ваш рейтинг: {round(rating)} {league.emoji} ({position_text(rank, total)})"
+    return t(
+        lang,
+        "⚔️ Ваш рейтинг: {rating} {emoji} ({position})",
+        rating=round(rating),
+        emoji=league.emoji,
+        position=position_text(lang, rank, total),
+    )
 
 
 @router.callback_query(ArenaCB.filter(F.action == "menu"))
-async def show_arena_menu(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+async def show_arena_menu(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
     slots = await _deck_slots(user_id)
-    rating_line = await _player_rating_line(user_id)
-    deck_name = await _deck_name(user_id)
+    rating_line = await _player_rating_line(user_id, lang)
+    deck_name = await _deck_name(user_id, lang)
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(
         callback.message.chat.id,
-        f"{main_deck_block(slots, deck_name)}\n\n{rating_line}",
-        reply_markup=arena_menu_kb(show_pve=cfr_player.CFR_AVAILABLE),
+        f"{main_deck_block(slots, deck_name, lang)}\n\n{rating_line}",
+        reply_markup=arena_menu_kb(show_pve=cfr_player.CFR_AVAILABLE, lang=lang),
     )
     await callback.answer()
 
 
 @router.callback_query(ArenaCB.filter(F.action == "bot"))
-async def show_bot_menu(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+async def show_bot_menu(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
     slots = await _deck_slots(user_id)
     bot_stats = await run_db(get_bot_stats)
-    bot_line = await run_db(bot_winrate_line, bot_stats)
+    bot_line = await run_db(bot_winrate_line, bot_stats, lang)
     data = await run_db(get_user_data, user_id)
-    human_line = human_pve_line(data.pve_wins, data.pve_losses) if data else ""
-    deck_name = await _deck_name(user_id)
+    human_line = human_pve_line(data.pve_wins, data.pve_losses, lang) if data else ""
+    deck_name = await _deck_name(user_id, lang)
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
     await bot.send_message(
         callback.message.chat.id,
-        f"{main_deck_block(slots, deck_name)}\n\n{bot_line}\n\n{human_line}",
-        reply_markup=bot_menu_kb(),
+        f"{main_deck_block(slots, deck_name, lang)}\n\n{bot_line}\n\n{human_line}",
+        reply_markup=bot_menu_kb(lang),
     )
     await callback.answer()
 
 
 @router.callback_query(ArenaCB.filter(F.action == "about"))
-async def show_about(callback: CallbackQuery, bot: Bot) -> None:
+async def show_about(callback: CallbackQuery, bot: Bot, lang: str) -> None:
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
-    await bot.send_message(callback.message.chat.id, ABOUT_TEXT, reply_markup=back_to_arena_kb())
+    await bot.send_message(
+        callback.message.chat.id, _about_text(lang), reply_markup=back_to_arena_kb(lang)
+    )
     await callback.answer()
 
 
 @router.callback_query(ArenaCB.filter(F.action == "leagues"))
-async def show_leagues(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+async def show_leagues(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
     rating, _rd, _vol, matches = await run_db(get_rating, user_id)
     status = await season_status()
 
     if matches < ARENA_CALIBRATION_MATCHES:
-        current = f"{UNRANKED.title} (калибровка {matches}/{ARENA_CALIBRATION_MATCHES})"
+        current = (
+            f"{UNRANKED.title(lang)} "
+            f"({t(lang, 'Калибровка').lower()} {matches}/{ARENA_CALIBRATION_MATCHES})"
+        )
         rating_line = ""
     else:
         total = await run_db(count_ranked_users)
         rank = await run_db(get_user_rank, user_id)
         league = league_for_rank(rank, total)
-        current = f"{league.title} ({position_text(rank, total)})"
-        rating_line = f"Рейтинг - {round(rating)}\n"
+        current = f"{league.title(lang)} ({position_text(lang, rank, total)})"
+        rating_line = t(lang, "⚔️ Рейтинг - {rating}", rating=round(rating)) + "\n"
 
     text = (
-        "🔱 <b>Лиги</b>\n"
-        f"{league_table_text()}\n\n"
-        "Лига считается по месту среди отранжированных игроков (10+ матчей за сезон).\n"
-        "За неактивность (3+ дня без боёв) рейтинг каждый день снижается.\n\n"
-        f"Ваша лига - {current}\n"
-        f"{rating_line}"
-        f"До конца сезона: {status['days_left']} дн."
+        t(lang, "🔱 <b>Лиги</b>")
+        + "\n"
+        + league_table_text(lang)
+        + "\n\n"
+        + t(lang, "@league_rules")
+        + "\n\n"
+        + t(lang, "Ваша лига - {league}", league=current)
+        + "\n"
+        + rating_line
+        + t(lang, "До конца сезона: {days} дн.", days=status["days_left"])
     )
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
-    await bot.send_message(callback.message.chat.id, text, reply_markup=back_to_arena_kb())
+    await bot.send_message(callback.message.chat.id, text, reply_markup=back_to_arena_kb(lang))
     await callback.answer()
 
 
@@ -332,14 +324,20 @@ async def _start_match(bot: Bot, user1: int, user2: int) -> bool:
     cards2 = await _load_deck_cards(user2)
     if cards1 is None or cards2 is None:
         for uid in (user1, user2):
-            await bot.send_message(uid, "❌ Колода не готова. Выберите 3 карточки")
+            lang = await run_db(get_user_lang, uid) or "ru"
+            await bot.send_message(uid, t(lang, "❌ Колода не готова. Выберите 3 карточки"))
         return False
 
     name1 = await _display_name(user1)
     name2 = await _display_name(user2)
+    lang1 = await run_db(get_user_lang, user1) or "ru"
+    lang2 = await run_db(get_user_lang, user2) or "ru"
     first_mover = random.choice([user1, user2])
     match_id = f"{min(user1, user2)}:{max(user1, user2)}"
-    record = build_record(match_id, user1, user2, name1, name2, cards1, cards2, first_mover)
+    record = build_record(
+        match_id, user1, user2, name1, name2, cards1, cards2, first_mover,
+        p1_lang=lang1, p2_lang=lang2,
+    )
 
     store = MatchStore()
     await store.save(record)
@@ -350,26 +348,32 @@ async def _start_match(bot: Bot, user1: int, user2: int) -> bool:
         if search_msg:
             await safe_delete_message(bot, uid, search_msg)
 
-    text = vs_start_message(record)
     for uid in (user1, user2):
-        first_text = "вы" if uid == first_mover else "противник"
-        await bot.send_message(uid, f"{text}\nПервый ход - {first_text}")
+        lang = record.lang_for(uid)
+        first_text = t(lang, "вы" if uid == first_mover else "противник")
+        await bot.send_message(
+            uid,
+            f"{vs_start_message(record, lang)}\n"
+            f"{t(lang, 'Первый ход - {who}', who=first_text)}",
+        )
 
     await _send_turn_prompt(bot, record, store)
     return True
 
 
-async def enter_pvp(bot: Bot, user_id: int, chat_id: int, source_message_id: int | None = None) -> None:
+async def enter_pvp(
+    bot: Bot, user_id: int, chat_id: int, source_message_id: int | None = None, lang: str = "ru"
+) -> None:
     store = MatchStore()
     async with user_lock(user_id):
         if await store.load_for_user(user_id) is not None:
-            await bot.send_message(chat_id, "❌ Вы уже находитесь в битве!")
+            await bot.send_message(chat_id, t(lang, "❌ Вы уже находитесь в битве!"))
             return
         if await is_queued(user_id):
-            await bot.send_message(chat_id, "❌ Вы уже в поиске противника")
+            await bot.send_message(chat_id, t(lang, "❌ Вы уже в поиске противника"))
             return
         if any(cid is None for cid in await run_db(get_arena_deck_ids, user_id)):
-            await bot.send_message(chat_id, "❌ Ваша колода не готова. Выберите 3 карточки")
+            await bot.send_message(chat_id, t(lang, "❌ Ваша колода не готова. Выберите 3 карточки"))
             return
         if source_message_id:
             await safe_delete_message(bot, chat_id, source_message_id)
@@ -377,32 +381,32 @@ async def enter_pvp(bot: Bot, user_id: int, chat_id: int, source_message_id: int
         if opponent is None:
             total, queued = await arena_counts()
             msg = await bot.send_message(
-                user_id, _search_text(total, queued), reply_markup=queue_kb()
+                user_id, _search_text(total, queued, lang), reply_markup=queue_kb(lang)
             )
             await set_search_message(user_id, msg.message_id)
-            _start_search_updates(bot, user_id, msg.message_id)
+            _start_search_updates(bot, user_id, msg.message_id, lang)
             return
 
     await _start_match(bot, user_id, opponent)
 
 
 @router.callback_query(ArenaCB.filter(F.action == "queue"))
-async def enter_queue(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+async def enter_queue(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
     await callback.answer()
-    await enter_pvp(bot, user_id, callback.message.chat.id, callback.message.message_id)
+    await enter_pvp(bot, user_id, callback.message.chat.id, callback.message.message_id, lang)
 
 
 @router.message(Command("fight"))
-async def cmd_fight(message: Message, bot: Bot, user_id: int) -> None:
-    await enter_pvp(bot, user_id, message.chat.id)
+async def cmd_fight(message: Message, bot: Bot, user_id: int, lang: str) -> None:
+    await enter_pvp(bot, user_id, message.chat.id, lang=lang)
 
 
 @router.callback_query(ArenaCB.filter(F.action == "leave"))
-async def leave_queue_handler(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+async def leave_queue_handler(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
     _stop_search_updates(user_id)
     await leave_queue(user_id)
     await safe_delete_message(bot, callback.message.chat.id, callback.message.message_id)
-    await bot.send_message(callback.message.chat.id, "Вы вышли из поиска противника")
+    await bot.send_message(callback.message.chat.id, t(lang, "Вы вышли из поиска противника"))
     await callback.answer()
 
 
@@ -411,23 +415,28 @@ async def leave_queue_handler(callback: CallbackQuery, bot: Bot, user_id: int) -
 # ──────────────────────────────────────────────
 
 async def enter_pve(
-    bot: Bot, user_id: int, chat_id: int, source_message_id: int | None = None, test_mode: bool = False
+    bot: Bot,
+    user_id: int,
+    chat_id: int,
+    source_message_id: int | None = None,
+    test_mode: bool = False,
+    lang: str = "ru",
 ) -> None:
     store = MatchStore()
     async with user_lock(user_id):
         if await store.load_for_user(user_id) is not None:
-            await bot.send_message(chat_id, "❌ Вы уже находитесь в битве!")
+            await bot.send_message(chat_id, t(lang, "❌ Вы уже находитесь в битве!"))
             return
         if not cfr_player.CFR_AVAILABLE:
-            await bot.send_message(chat_id, "🤖 PvE временно недоступно")
+            await bot.send_message(chat_id, t(lang, "🤖 PvE временно недоступно"))
             return
         if CFR_MAX_ACTIVE and cfr_player.active_count() >= CFR_MAX_ACTIVE:
-            await bot.send_message(chat_id, "⏳ Сервер занят, попробуйте позже")
+            await bot.send_message(chat_id, t(lang, "⏳ Сервер занят, попробуйте позже"))
             return
 
         cards = await _load_deck_cards_raw(user_id)
         if cards is None:
-            await bot.send_message(chat_id, "❌ Ваша колода не готова. Выберите 3 карточки")
+            await bot.send_message(chat_id, t(lang, "❌ Ваша колода не готова. Выберите 3 карточки"))
             return
 
         pool = await run_db(get_all_character_bases)
@@ -435,11 +444,12 @@ async def enter_pve(
         human_meta = [card_to_meta(c) for c in cards]
 
         name = await _display_name(user_id)
-        opponent_name = "Соперник" if test_mode else "🤖 Бот"
+        opponent_name = t(lang, "Соперник") if test_mode else t(lang, "🤖 Бот")
         first_mover = random.choice([user_id, BOT_ID])
         match_id = f"pve:{user_id}"
         record = build_record(
-            match_id, user_id, BOT_ID, name, opponent_name, human_meta, bot_meta, first_mover
+            match_id, user_id, BOT_ID, name, opponent_name, human_meta, bot_meta, first_mover,
+            p1_lang=lang,
         )
         record.vs_bot = not test_mode
         record.test_mode = test_mode
@@ -449,8 +459,11 @@ async def enter_pve(
         if source_message_id:
             await safe_delete_message(bot, chat_id, source_message_id)
 
-    first_text = "вы" if first_mover == user_id else "противник"
-    await bot.send_message(user_id, f"{vs_start_message(record)}\nПервый ход - {first_text}")
+    first_text = t(lang, "вы" if first_mover == user_id else "противник")
+    await bot.send_message(
+        user_id,
+        f"{vs_start_message(record, lang)}\n{t(lang, 'Первый ход - {who}', who=first_text)}",
+    )
 
     if first_mover == BOT_ID:
         await _bot_turn(bot, record, store)
@@ -459,22 +472,22 @@ async def enter_pve(
 
 
 @router.callback_query(ArenaCB.filter(F.action == "pve"))
-async def start_pve(callback: CallbackQuery, bot: Bot, user_id: int) -> None:
+async def start_pve(callback: CallbackQuery, bot: Bot, user_id: int, lang: str) -> None:
     await callback.answer()
-    await enter_pve(bot, user_id, callback.message.chat.id, callback.message.message_id)
+    await enter_pve(bot, user_id, callback.message.chat.id, callback.message.message_id, lang=lang)
 
 
 @router.message(Command("fight_ai"))
-async def cmd_fight_ai(message: Message, bot: Bot, user_id: int) -> None:
-    await enter_pve(bot, user_id, message.chat.id)
+async def cmd_fight_ai(message: Message, bot: Bot, user_id: int, lang: str) -> None:
+    await enter_pve(bot, user_id, message.chat.id, lang=lang)
 
 
 @router.message(Command("test_battle"))
-async def cmd_test_battle(message: Message, bot: Bot, user_id: int) -> None:
+async def cmd_test_battle(message: Message, bot: Bot, user_id: int, lang: str) -> None:
     """Admin-only: play a battle vs an AI opponent via the normal battle flow."""
     if user_id != ADMIN_ID:
         return
-    await enter_pve(bot, user_id, message.chat.id, test_mode=True)
+    await enter_pve(bot, user_id, message.chat.id, test_mode=True, lang=lang)
 
 
 # ──────────────────────────────────────────────
@@ -486,10 +499,10 @@ async def _send_turn_prompt(bot: Bot, record: MatchRecord, store: MatchStore) ->
     other = record.opponent_of[owner]
 
     if _is_human(record, other):
-        await bot.send_message(other, "Ход противника")
+        await bot.send_message(other, t(record.lang_for(other), "Ход противника"))
 
     if _is_human(record, owner):
-        await bot.send_message(owner, f"Ваш ход")
+        await bot.send_message(owner, t(record.lang_for(owner), "Ваш ход"))
         prev = record.player1_msg_id if owner == record.player1 else record.player2_msg_id
         if prev:
             await safe_delete_message(bot, owner, prev)
@@ -501,7 +514,7 @@ async def _send_turn_prompt(bot: Bot, record: MatchRecord, store: MatchStore) ->
 
     await store.save(record)
     if _is_human(record, owner):
-        _start_timer(bot, record.match_id, owner)
+        _start_timer(bot, record, owner)
 
 
 async def _bot_turn(bot: Bot, record: MatchRecord, store: MatchStore) -> None:
@@ -519,7 +532,9 @@ async def _bot_turn(bot: Bot, record: MatchRecord, store: MatchStore) -> None:
     await _resolve_and_progress(bot, record, store)
 
 
-def _start_timer(bot: Bot, match_id: str, owner: int) -> None:
+def _start_timer(bot: Bot, record: MatchRecord, owner: int) -> None:
+    match_id = record.match_id
+    owner_lang = record.lang_for(owner)
     _cancel_timer(match_id)
 
     async def _job() -> None:
@@ -527,21 +542,23 @@ def _start_timer(bot: Bot, match_id: str, owner: int) -> None:
         warn = ARENA_WARN_BEFORE
         if warn > 0 and ARENA_TURN_TIMEOUT > warn:
             await asyncio.sleep(ARENA_TURN_TIMEOUT - warn)
-            record = await store.load(match_id)
-            if record is None or record.turn_owner != owner:
+            fresh = await store.load(match_id)
+            if fresh is None or fresh.turn_owner != owner:
                 return
             try:
-                await bot.send_message(owner, f"⏳ Осталось {warn} секунд на ход!")
+                await bot.send_message(
+                    owner, t(owner_lang, "⏳ Осталось {seconds} секунд на ход!", seconds=warn)
+                )
             except Exception as e:  # noqa: BLE001
                 logger.error(f"Timeout warning failed for {owner}: {e}")
             await asyncio.sleep(warn)
         else:
             await asyncio.sleep(ARENA_TURN_TIMEOUT)
 
-        record = await store.load(match_id)
-        if record is None or record.turn_owner != owner:
+        fresh = await store.load(match_id)
+        if fresh is None or fresh.turn_owner != owner:
             return
-        await _finish_match(bot, record, winner_is_player1=(owner != record.player1), timeout=True)
+        await _finish_match(bot, fresh, winner_is_player1=(owner != fresh.player1), timeout=True)
 
     _timers[match_id] = asyncio.create_task(_job())
 
@@ -595,9 +612,9 @@ async def _send_card(bot: Bot, chat_id: int, image: str, caption: str) -> None:
 async def _send_switch_media(bot: Bot, record: MatchRecord, actor_user: int, target_user: int, card: dict) -> None:
     image = card.get("image", "")
     if _is_human(record, actor_user):
-        await _send_card(bot, actor_user, image, switch_caption(card, True))
+        await _send_card(bot, actor_user, image, switch_caption(card, True, record.lang_for(actor_user)))
     if _is_human(record, target_user):
-        await _send_card(bot, target_user, image, switch_caption(card, False))
+        await _send_card(bot, target_user, image, switch_caption(card, False, record.lang_for(target_user)))
 
 
 async def _resolve_and_progress(bot: Bot, record: MatchRecord, store: MatchStore) -> None:
@@ -640,9 +657,19 @@ async def _resolve_and_progress(bot: Bot, record: MatchRecord, store: MatchStore
         promoted = resolution.promoted_card
         promoted_image = promoted.get("image", "")
         if _is_human(record, resolution.target_user):
-            await _send_card(bot, resolution.target_user, promoted_image, promotion_caption(promoted, True))
+            await _send_card(
+                bot,
+                resolution.target_user,
+                promoted_image,
+                promotion_caption(promoted, True, record.lang_for(resolution.target_user)),
+            )
         if _is_human(record, resolution.actor_user):
-            await _send_card(bot, resolution.actor_user, promoted_image, promotion_caption(promoted, False))
+            await _send_card(
+                bot,
+                resolution.actor_user,
+                promoted_image,
+                promotion_caption(promoted, False, record.lang_for(resolution.actor_user)),
+            )
 
     if resolution.winner_is_player1 is not None:
         await _finish_match(bot, record, winner_is_player1=resolution.winner_is_player1)
@@ -655,15 +682,17 @@ async def _resolve_and_progress(bot: Bot, record: MatchRecord, store: MatchStore
         await _send_turn_prompt(bot, record, store)
 
 
-async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot: Bot, user_id: int) -> None:
+async def _update_pending(
+    callback: CallbackQuery, callback_data: BattleCB, bot: Bot, user_id: int, lang: str = "ru"
+) -> None:
     store = MatchStore()
     record = await store.load_for_user(user_id)
     if record is None or record.token != callback_data.token:
-        await callback.answer("Этот бой уже завершён", show_alert=True)
+        await callback.answer(t(lang, "Этот бой уже завершён"), show_alert=True)
         await _clear_message(bot, callback.message.chat.id, callback.message.message_id)
         return
     if record.turn_owner != user_id:
-        await callback.answer("Сейчас ход противника", show_alert=True)
+        await callback.answer(t(lang, "Сейчас ход противника"), show_alert=True)
         return
 
     action = callback_data.action
@@ -676,12 +705,12 @@ async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot:
         from features.arena.engine import MAX_BONUS
 
         if side.bonus + record.pending_bonuses >= MAX_BONUS:
-            await callback.answer("Максимально возможный бонус", show_alert=True)
+            await callback.answer(t(lang, "Максимально возможный бонус"), show_alert=True)
             return
         record.pending_bonuses += 1
     elif action == "switch":
         if not switch_targets(record):
-            await callback.answer("Смена недоступна", show_alert=True)
+            await callback.answer(t(lang, "Смена недоступна"), show_alert=True)
             return
         try:
             await callback.message.edit_reply_markup(reply_markup=switch_kb(record, user_id))
@@ -691,7 +720,7 @@ async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot:
         return
     elif action == "switchto":
         if callback_data.value not in switch_targets(record):
-            await callback.answer("Недоступный персонаж", show_alert=True)
+            await callback.answer(t(lang, "Недоступный персонаж"), show_alert=True)
             return
         record.pending_switch_to = callback_data.value
         await store.save(record)
@@ -742,17 +771,19 @@ async def _update_pending(callback: CallbackQuery, callback_data: BattleCB, bot:
 
 
 @router.callback_query(BattleCB.filter())
-async def handle_battle(callback: CallbackQuery, callback_data: BattleCB, bot: Bot, user_id: int) -> None:
+async def handle_battle(
+    callback: CallbackQuery, callback_data: BattleCB, bot: Bot, user_id: int, lang: str
+) -> None:
     if callback_data.action == "teams":
         record = await MatchStore().load_for_user(user_id)
         if record is None or record.token != callback_data.token:
-            await callback.answer("Этот бой уже завершён", show_alert=True)
+            await callback.answer(t(lang, "Этот бой уже завершён"), show_alert=True)
             await _clear_message(bot, callback.message.chat.id, callback.message.message_id)
             return
         await callback.message.answer(teams_message(record, user_id))
         await callback.answer()
         return
-    await _update_pending(callback, callback_data, bot, user_id)
+    await _update_pending(callback, callback_data, bot, user_id, lang)
 
 
 async def _finish_match(
@@ -763,54 +794,81 @@ async def _finish_match(
 
     if record.test_mode:
         human = record.player1
-        text = "🏆 Тестовый бой: победа!" if winner_is_player1 else "💀 Тестовый бой: поражение."
+        lang = record.lang_for(human)
+        text = (
+            t(lang, "🏆 Тестовый бой: победа!")
+            if winner_is_player1
+            else t(lang, "💀 Тестовый бой: поражение.")
+        )
         if timeout:
-            text += "\nВы не успели выбрать действия"
+            text += "\n" + t(lang, "Вы не успели выбрать действия")
         await bot.send_message(human, text)
         for mid in (record.player1_msg_id, record.player2_msg_id):
             if mid:
                 await _clear_message(bot, human, mid)
         await store.delete(record)
         cfr_player.drop_player(record.match_id)
-        await show_main_menu(bot, human, human)
+        await show_main_menu(bot, human, human, lang)
         return
 
     if record.vs_bot:
         human = record.player1
-        text = "🏆 Вы победили бота!" if winner_is_player1 else "💀 Вы проиграли боту."
+        lang = record.lang_for(human)
+        text = (
+            t(lang, "🏆 Вы победили бота!")
+            if winner_is_player1
+            else t(lang, "💀 Вы проиграли боту.")
+        )
         if timeout:
-            text += "\nВы не успели выбрать действия"
+            text += "\n" + t(lang, "Вы не успели выбрать действия")
         result = await run_db(record_pve_result, human, not winner_is_player1)
-        text += f"\n🤖 Рейтинг бота: {result['bot_rating']} ({result['bot_delta']:+d})"
+        text += "\n" + t(
+            lang,
+            "🤖 Рейтинг бота: {rating} ({delta:+d})",
+            rating=result["bot_rating"],
+            delta=result["bot_delta"],
+        )
         await bot.send_message(human, text)
         for mid in (record.player1_msg_id, record.player2_msg_id):
             if mid:
                 await _clear_message(bot, human, mid)
         await store.delete(record)
         cfr_player.drop_player(record.match_id)
-        await show_main_menu(bot, human, human)
+        await show_main_menu(bot, human, human, lang)
         return
 
     winner = record.player1 if winner_is_player1 else record.player2
     loser = record.player2 if winner_is_player1 else record.player1
     winner_name = await _display_name(winner)
     loser_name = await _display_name(loser)
+    w_lang = record.lang_for(winner)
+    l_lang = record.lang_for(loser)
 
     w_matches = (await run_db(get_rating, winner))[3]
     l_matches = (await run_db(get_rating, loser))[3]
     result = await run_db(record_pvp_result, winner, loser)
 
-    w_line = "Калибровка" if w_matches < ARENA_CALIBRATION_MATCHES else f"+{result['winner_delta']} MMR 🏆"
-    l_line = "Калибровка" if l_matches < ARENA_CALIBRATION_MATCHES else f"-{result['loser_delta']} MMR 🏆"
+    if w_matches < ARENA_CALIBRATION_MATCHES:
+        w_line = t(w_lang, "Калибровка")
+    else:
+        w_line = t(w_lang, "+{delta} MMR 🏆", delta=result["winner_delta"])
+    if l_matches < ARENA_CALIBRATION_MATCHES:
+        l_line = t(l_lang, "Калибровка")
+    else:
+        l_line = t(l_lang, "-{delta} MMR 🏆", delta=result["loser_delta"])
 
-    timeout_winner = "\nПротивник не успел выбрать действия" if timeout else ""
-    timeout_loser = "\nВы не успели выбрать действия" if timeout else ""
+    timeout_winner = "\n" + t(w_lang, "Противник не успел выбрать действия") if timeout else ""
+    timeout_loser = "\n" + t(l_lang, "Вы не успели выбрать действия") if timeout else ""
 
     await bot.send_message(
-        winner, f"Вы победили <b>{loser_name}</b>!{timeout_winner}\n{w_line}", parse_mode="HTML"
+        winner,
+        t(w_lang, "Вы победили <b>{name}</b>!{extra}\n{line}", name=loser_name, extra=timeout_winner, line=w_line),
+        parse_mode="HTML",
     )
     await bot.send_message(
-        loser, f"Вы проиграли <b>{winner_name}</b>!{timeout_loser}\n{l_line}", parse_mode="HTML"
+        loser,
+        t(l_lang, "Вы проиграли <b>{name}</b>!{extra}\n{line}", name=winner_name, extra=timeout_loser, line=l_line),
+        parse_mode="HTML",
     )
 
     for uid, mid in (
@@ -823,8 +881,8 @@ async def _finish_match(
     await store.delete(record)
     await leave_queue(record.player1)
     await leave_queue(record.player2)
-    await show_main_menu(bot, winner, winner)
-    await show_main_menu(bot, loser, loser)
+    await show_main_menu(bot, winner, winner, w_lang)
+    await show_main_menu(bot, loser, loser, l_lang)
 
 
 # ──────────────────────────────────────────────
@@ -844,7 +902,11 @@ async def relay_comment(message: Message, bot: Bot, user_id: int) -> None:
 
     if record.comments_used(user_id, record.state.turn) >= ARENA_COMMENTS_PER_TURN:
         await message.answer(
-            f"⚠️ За полуход можно отправить не больше {ARENA_COMMENTS_PER_TURN} сообщений."
+            t(
+                record.lang_for(user_id),
+                "⚠️ За полуход можно отправить не больше {count} сообщений.",
+                count=ARENA_COMMENTS_PER_TURN,
+            )
         )
         return
 
@@ -854,6 +916,9 @@ async def relay_comment(message: Message, bot: Bot, user_id: int) -> None:
     opponent = record.opponent_of[user_id]
     name = record.p1_name if user_id == record.player1 else record.p2_name
     try:
-        await bot.send_message(opponent, f"💬 <b>{escape(name)}</b>: {escape(text)}")
+        await bot.send_message(
+            opponent,
+            t(record.lang_for(opponent), "💬 <b>{name}</b>: {text}", name=escape(name), text=escape(text)),
+        )
     except Exception as e:  # noqa: BLE001
         logger.error(f"Arena comment relay failed: {e}")

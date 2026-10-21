@@ -1,14 +1,22 @@
 import aiohttp
 
 from config import LAVA_API_KEY, LAVA_OFFER_ID
+from core.i18n import t
 from core.logger import logger
 from core.utils import run_db
-from db.queries import delete_pending_payment, finalize_payment, get_pending_payment
+from db.queries import (
+    delete_pending_payment,
+    finalize_payment,
+    get_pending_payment,
+    get_user_lang,
+)
 
 LAVA_API_URL = "https://gate.lava.top"
 
 
-async def create_lava_invoice(user_id: int, currency: str, amount: float) -> tuple[str | None, str]:
+async def create_lava_invoice(
+    user_id: int, currency: str, amount: float, lang: str = "ru"
+) -> tuple[str | None, str]:
     payload = {
         "email": f"user_{user_id}@example.com",
         "offerId": LAVA_OFFER_ID,
@@ -22,17 +30,17 @@ async def create_lava_invoice(user_id: int, currency: str, amount: float) -> tup
         async with session.post(f"{LAVA_API_URL}/api/v3/invoice", json=payload, headers=headers) as resp:
             if resp.status == 422:
                 logger.error(f"Lava API 422: {await resp.text()}")
-                return None, "Ошибка создания счёта. Попробуйте позже."
+                return None, t(lang, "Ошибка создания счёта. Попробуйте позже.")
             if resp.status >= 400:
                 logger.error(f"Lava API {resp.status}: {await resp.text()}")
-                return None, "Ошибка создания счёта. Попробуйте позже."
+                return None, t(lang, "Ошибка создания счёта. Попробуйте позже.")
             data = await resp.json()
 
     invoice_id = data.get("id")
     payment_url = data.get("paymentUrl")
     if not invoice_id or not payment_url:
         logger.error(f"Lava API unexpected response: {data}")
-        return None, "Не удалось получить ссылку на оплату."
+        return None, t(lang, "Не удалось получить ссылку на оплату.")
     return invoice_id, payment_url
 
 
@@ -70,7 +78,11 @@ async def process_lava_webhook(data: dict, bot) -> str:
 
     if status == "ok":
         try:
-            await bot.send_message(user_id, f"✅ Оплата получена!\nНачислено 🔮 {shards} осколков.")
+            lang = await run_db(get_user_lang, user_id) or "ru"
+            await bot.send_message(
+                user_id,
+                t(lang, "✅ Оплата получена!\nНачислено 🔮 {shards} осколков.", shards=shards),
+            )
         except Exception as e:  # noqa: BLE001
             logger.error(f"Lava payment notify error for {user_id}: {e}")
         logger.info(f"Lava payment processed: user={user_id}, {currency}={amount}, shards={shards}")

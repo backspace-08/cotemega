@@ -3,14 +3,10 @@
 Used on startup (after a deploy/restart) and by the admin cleanup commands.
 """
 
+from core.i18n import t
 from core.logger import logger
 from features.arena import cfr_player
 from features.arena.store import clear_matches
-
-CANCEL_MESSAGE = (
-    "⚠️ Бот обновился — текущие бои арены отменены.\n"
-    "Рейтинг не изменён, можно начать заново."
-)
 
 
 async def reset_active_matches(bot=None, only: str | None = None, notify: bool = True) -> dict:
@@ -27,7 +23,17 @@ async def reset_active_matches(bot=None, only: str | None = None, notify: bool =
             for uid in (match["player1"], match["player2"]):
                 if uid and uid != 0 and uid not in notified:
                     try:
-                        await bot.send_message(uid, CANCEL_MESSAGE)
+                        from db.queries import get_user_lang
+
+                        lang = await get_user_lang(uid) or "ru"
+                        await bot.send_message(
+                            uid,
+                            t(
+                                lang,
+                                "⚠️ Бот обновился — текущие бои арены отменены.\n"
+                                "Рейтинг не изменён, можно начать заново.",
+                            ),
+                        )
                     except Exception as e:  # noqa: BLE001
                         logger.error(f"Arena cancel notify failed for {uid}: {e}")
                     notified.add(uid)

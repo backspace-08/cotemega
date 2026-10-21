@@ -141,8 +141,9 @@ async def safe_edit_text(
             raise
 
 
-async def show_main_menu(bot: Bot, chat_id: int, user_id: int) -> None:
+async def show_main_menu(bot: Bot, chat_id: int, user_id: int, lang: str = "ru") -> None:
     from db.queries import get_user_data
+    from core.i18n import t
 
     data = await run_db(get_user_data, user_id)
     points = data.points if data else 0
@@ -150,6 +151,12 @@ async def show_main_menu(bot: Bot, chat_id: int, user_id: int) -> None:
     name = (data.first_name or data.username) if data else None
     await bot.send_message(
         chat_id,
-        f"🥷Имя: {escape(name or 'Игрок')}\n💠 Очки: {points}\n🔮 Осколки: {shards}",
-        reply_markup=main_menu_kb(),
+        t(
+            lang,
+            "🥷Имя: {name}\n💠 Очки: {points}\n🔮 Осколки: {shards}",
+            name=escape(name or t(lang, "Игрок")),
+            points=points,
+            shards=shards,
+        ),
+        reply_markup=main_menu_kb(lang),
     )

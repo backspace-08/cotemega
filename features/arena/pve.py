@@ -73,6 +73,8 @@ def _to_meta(candidate: BotCandidate, rng: random.Random) -> dict:
         "atk": candidate.atk,
         "level": candidate.level,
         "name": base.name,
+        "name_ru": getattr(base, "name_ru", base.name),
+        "name_en": getattr(base, "name_en", base.name),
         "gender": base.gender,
         "image": str(base.image_path),
     }
