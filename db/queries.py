@@ -962,30 +962,37 @@ def delete_pending_payment(invoice_id: str) -> None:
             session.delete(row)
 
 
-def get_shop_rotation(user_id: int, day: int) -> dict[int, int]:
+def get_shop_rotation(user_id: int, day: int) -> dict[int, tuple[int, str | None]]:
+    """Frozen lots of the day: slot -> (char_id, rolled rarity)."""
     with get_session() as session:
         rows = session.execute(
-            select(ShopRotation.slot, ShopRotation.char_id).where(
+            select(ShopRotation.slot, ShopRotation.char_id, ShopRotation.rarity).where(
                 ShopRotation.user_id == user_id, ShopRotation.day == day
             )
         ).all()
-        return {slot: char_id for slot, char_id in rows}
+        return {slot: (char_id, rarity) for slot, char_id, rarity in rows}
 
 
-def save_shop_rotation(user_id: int, day: int, picks: dict[int, int]) -> None:
+def save_shop_rotation(user_id: int, day: int, picks: dict[int, tuple[int, str]]) -> None:
+    """Freeze the given slots (upsert).
+
+    Callers only pass slots that are not frozen yet, so replacing an existing
+    row only happens for a stale entry (the frozen card is no longer owned).
+    """
     if not picks:
         return
     with get_session() as session:
-        existing = set(
-            session.execute(
-                select(ShopRotation.slot).where(
-                    ShopRotation.user_id == user_id, ShopRotation.day == day
-                )
-            ).scalars().all()
+        session.execute(
+            delete(ShopRotation).where(
+                ShopRotation.user_id == user_id,
+                ShopRotation.day == day,
+                ShopRotation.slot.in_(list(picks)),
+            )
         )
-        for slot, char_id in picks.items():
-            if slot not in existing:
-                session.add(ShopRotation(user_id=user_id, day=day, slot=slot, char_id=char_id))
+        for slot, (char_id, rarity) in picks.items():
+            session.add(
+                ShopRotation(user_id=user_id, day=day, slot=slot, char_id=char_id, rarity=rarity)
+            )
 
 
 def shop_purchased_char_ids(user_id: int, day: int) -> set[int]:

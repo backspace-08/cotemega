@@ -29,14 +29,9 @@ def _lot_caption(lot: shop.Lot, lang: str = "ru", note: str = "") -> str:
     lines = []
     if note:
         lines.append(note)
-    lines.append(
-        t(
-            lang,
-            "🛒 <b>Магазин</b> · {rarity}",
-            rarity=f"{RARITY_EMOJI.get(lot.rarity, '')} {loc_rarity(lang, lot.rarity)}",
-        )
-    )
+    lines.append(t(lang, "🛒 <b>Магазин</b>"))
     lines.append(f"{get_type_char(lot.card.type)} <b>{escape(card_name(lot.card, lang))}</b>")
+    lines.append(f"{RARITY_EMOJI.get(lot.rarity, '')} {loc_rarity(lang, lot.rarity)}")
     if lot.maxed:
         lines.append(t(lang, "👑 Максимальный уровень ({level})", level=MAX_CHARACTER_LEVEL))
     elif lot.purchased:

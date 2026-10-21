@@ -331,7 +331,9 @@ class ShopRotation(Base):
     """The lot frozen for a given (user, day, slot).
 
     Fixed on the day's first view so a card that becomes max-level later stays
-    shown (as max) instead of being swapped out.
+    shown (as max) instead of being swapped out. `rarity` stores the rarity that
+    was rolled for this slot, so later weight changes never re-roll a day that
+    has already been shown.
     """
 
     __tablename__ = "shop_rotation"
@@ -341,5 +343,6 @@ class ShopRotation(Base):
     day = Column(Integer, nullable=False)
     slot = Column(SmallInteger, nullable=False)
     char_id = Column(Integer, nullable=False)
+    rarity = Column(Text)
 
     __table_args__ = (UniqueConstraint("user_id", "day", "slot", name="uq_shop_rotation"),)

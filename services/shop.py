@@ -1,8 +1,9 @@
 """Shop: daily rotating level-up lots for cards the player already owns.
 
-Rotation is deterministic per (day) for the *rarities* (global, same for all
-players) and per (user, day, slot, rarity) for the specific card. Buying is
-keyed by (user, day, char_id) so a lot can't be bought twice.
+Each player rolls their own rarities for the day (seeded per user+day) and the
+resulting lots — both the card and the rarity — are frozen in `shop_rotation`
+on the first view, so nothing shifts until the reset hour. Buying is keyed by
+(user, day, char_id) so a lot can't be bought twice.
 """
 
 import random
@@ -50,9 +51,9 @@ def seconds_to_reset(now: datetime | None = None) -> int:
     return max(0, int((next_reset - shifted).total_seconds()))
 
 
-def daily_rarities(day: int) -> list[str]:
-    """The day's rarities — identical for everyone (seeded by the day only)."""
-    rng = random.Random(f"megaverse-shop:{day}")
+def daily_rarities(user_id: int, day: int) -> list[str]:
+    """The player's own rarities for the day (seeded per user+day)."""
+    rng = random.Random(f"megaverse-shop:{user_id}:{day}")
     keys = [(rng.random() ** (1.0 / weight), rarity) for rarity, weight in SHOP_RARITY_WEIGHTS.items()]
     keys.sort(reverse=True)
     return [rarity for _, rarity in keys[:SHOP_SLOTS]]
@@ -101,23 +102,32 @@ def _pick(by_rarity: dict, wanted: str, user_id: int, day: int, slot: int, exclu
 
 
 def build_lots(user_id: int, day: int) -> list[Lot]:
-    rarities = daily_rarities(day)
-    frozen = get_shop_rotation(user_id, day)
+    rarities = daily_rarities(user_id, day)
+
+    # A frozen card can disappear (full reset / progress wipe): such a slot is
+    # dropped here and re-rolled below, instead of silently vanishing from the shop.
+    all_cards = get_owned_characters(user_id)
+    owned_ids = {c.char_id for c in all_cards}
+    frozen = {
+        slot: entry
+        for slot, entry in get_shop_rotation(user_id, day).items()
+        if entry[0] in owned_ids
+    }
 
     # pick (among non-max cards) only the slots not frozen yet, then freeze them
-    owned = [c for c in get_owned_characters(user_id) if c.level < MAX_CHARACTER_LEVEL]
+    owned = [c for c in all_cards if c.level < MAX_CHARACTER_LEVEL]
     by_rarity: dict[str, list] = {}
     for card in owned:
         by_rarity.setdefault(card.rarity, []).append(card)
 
-    used = set(frozen.values())
-    new_picks: dict[int, int] = {}
+    used = {char_id for char_id, _rarity in frozen.values()}
+    new_picks: dict[int, tuple[int, str]] = {}
     for slot, wanted in enumerate(rarities):
         if slot in frozen:
             continue
         card = _pick(by_rarity, wanted, user_id, day, slot, exclude=used)
         if card is not None:
-            new_picks[slot] = card.char_id
+            new_picks[slot] = (card.char_id, card.rarity)
             used.add(card.char_id)
     if new_picks:
         save_shop_rotation(user_id, day, new_picks)
@@ -125,10 +135,8 @@ def build_lots(user_id: int, day: int) -> list[Lot]:
 
     purchased = shop_purchased_char_ids(user_id, day)
     lots: list[Lot] = []
-    for slot in range(len(rarities)):
-        char_id = frozen.get(slot)
-        if char_id is None:
-            continue
+    for slot in sorted(frozen):
+        char_id, _rolled = frozen[slot]
         card = get_user_character(user_id, char_id)  # may be max now
         if card is None:
             continue

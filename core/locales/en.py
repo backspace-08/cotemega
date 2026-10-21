@@ -142,7 +142,7 @@ EN = {
         "{flag} <b>{currency}</b>\n\n<blockquote>{prices}</blockquote>\n\nTap an amount to pay.",
 
     # ── Shop ──────────────────────────────────────────────────────────
-    "🛒 <b>Магазин</b> · {rarity}": "🛒 <b>Shop</b> · {rarity}",
+    "🛒 <b>Магазин</b>": "🛒 <b>Shop</b>",
     "💠 Цена: {price}🔮": "💠 Price: {price}🔮",
     "\n🔄 Обновится через {time}": "\n🔄 Refreshes in {time}",
     "{hours}ч {minutes}м": "{hours}h {minutes}m",

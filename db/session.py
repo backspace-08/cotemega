@@ -67,6 +67,7 @@ _MIGRATE_ARENA_DECK_SQL = text(
 # explicitly. Keep this list append-only.
 _ADD_COLUMNS_SQL = [
     "ALTER TABLE characters ADD COLUMN IF NOT EXISTS gender TEXT DEFAULT 'unknown'",
+    "ALTER TABLE shop_rotation ADD COLUMN IF NOT EXISTS rarity TEXT",
     "ALTER TABLE characters ADD COLUMN IF NOT EXISTS base_hp INTEGER",
     "ALTER TABLE characters ADD COLUMN IF NOT EXISTS base_attack INTEGER",
     "ALTER TABLE users ADD COLUMN IF NOT EXISTS rating DOUBLE PRECISION DEFAULT 1000",
