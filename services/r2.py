@@ -70,6 +70,23 @@ def delete_object(relative: str) -> None:
     _get_client().delete_object(Bucket=R2_BUCKET, Key=_full_key(relative))
 
 
+def list_filenames() -> list[str]:
+    """Basenames of every object in the bucket.
+
+    Used when picking a name for a new/edited card art: the catalog alone is not
+    enough, because replacing art orphans the previous file, and a name that is
+    free in the catalog may still exist in the bucket.
+    """
+    client = _get_client()
+    base = f"{R2_PREFIX}/" if R2_PREFIX else ""
+    names: list[str] = []
+    paginator = client.get_paginator("list_objects_v2")
+    for page in paginator.paginate(Bucket=R2_BUCKET, Prefix=base):
+        for obj in page.get("Contents", ()):
+            names.append(obj["Key"].rsplit("/", 1)[-1])
+    return names
+
+
 def load_catalog() -> dict:
     return json.loads(get_bytes(CATALOG_KEY))
 

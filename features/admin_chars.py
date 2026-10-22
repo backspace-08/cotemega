@@ -7,6 +7,7 @@ it to the DB via ``seed.apply_catalog`` (no re-fetch, avoids CDN cache).
 
 import asyncio
 import re
+from datetime import datetime, timezone
 from html import escape
 
 from aiogram import Bot, F, Router
@@ -97,15 +98,30 @@ def _find_by_id(data: dict, char_id: int) -> dict | None:
     return next((c for c in data["characters"] if c.get("id") == char_id), None)
 
 
-def _unique_filename(data: dict, slug: str, ext: str) -> str:
-    existing = {c.get("filename") for c in data["characters"]}
-    name = f"{slug}.{ext}"
-    if name not in existing:
-        return name
+def _unique_filename(data: dict, slug: str, ext: str, taken: set[str] | None = None) -> str:
+    """A filename that has never been used before.
+
+    `taken` must include the bucket's filenames (see `r2.list_filenames`): the
+    catalog forgets the art a previous edit replaced, so the catalog alone is
+    not enough to tell whether a name is free.
+
+    Replacing art gets a UTC timestamp instead of a version number: files are
+    uploaded with a year-long `immutable` Cache-Control, so the CDN and Telegram
+    keep serving the old bytes for any URL that was ever used. A counter can be
+    rewound (e.g. by deleting a file by hand), a timestamp cannot.
+    """
+    used = {c.get("filename") for c in data["characters"] if c.get("filename")}
+    used |= taken or set()
+    base = f"{slug}.{ext}"
+    if base not in used:
+        return base
+    stamp = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
+    name = f"{slug}_{stamp}.{ext}"
     i = 2
-    while f"{slug}_v{i}.{ext}" in existing:
+    while name in used:
+        name = f"{slug}_{stamp}-{i}.{ext}"
         i += 1
-    return f"{slug}_v{i}.{ext}"
+    return name
 
 
 def _media_info(message: Message):
@@ -355,7 +371,8 @@ async def add_char_confirm(callback: CallbackQuery, callback_data: AdminCharCB, 
 async def _create_character(bot: Bot, data: dict) -> dict:
     async with _catalog_lock:
         catalog = await run_db(r2.load_catalog)
-        filename = _unique_filename(catalog, _slug(data["name_en"]), data["ext"])
+        bucket_names = set(await run_db(r2.list_filenames))
+        filename = _unique_filename(catalog, _slug(data["name_en"]), data["ext"], bucket_names)
         relative = f"{data['rarity']}/{filename}"
         buffer = await bot.download(data["file_id"])
         await run_db(r2.put_bytes, relative, buffer.getvalue(), data["content_type"])
@@ -536,7 +553,8 @@ async def _replace_art(name_en: str, file_id: str, ext: str, content_type: str, 
         entry = _find(catalog, name_en)
         if entry is None:
             raise RuntimeError("персонаж не найден в каталоге")
-        filename = _unique_filename(catalog, _slug(entry["name_en"]), ext)
+        bucket_names = set(await run_db(r2.list_filenames))
+        filename = _unique_filename(catalog, _slug(entry["name_en"]), ext, bucket_names)
         relative = f"{entry['rarity']}/{filename}"
         buffer = await bot.download(file_id)
         await run_db(r2.put_bytes, relative, buffer.getvalue(), content_type)
